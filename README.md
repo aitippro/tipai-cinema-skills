@@ -1,42 +1,25 @@
 # TipAi Skills
 
-AI Skill 模块集。Agent 加载后直接用自身 AI 能力执行，零代码、零依赖。
+AI Skill 模块。Agent 加载 `.md` 文件后直接用自身 AI 能力执行。
 
 ---
 
-## Skills
+## 主 Skill
 
-| Skill | 应用场景 | 核心能力 |
-|-------|---------|---------|
-| **director-storyboard** | AI 漫剧 / AI 短剧 | 剧本→分镜提示词：角色分析、镜头拆解、连续性检查 |
-| **prompt-lifecycle** | 长线视频创作 | 提示词生命周期：角色锁定、场景复用、版本管理、快照 |
-| **tpema-expression** | 数字人 / 虚拟主播 | 标点→FACS AU + 语气语速 + 视线控制 + Perlin 微表情 |
-| **multimodal-prompt** | 通用多模态 | 文生图 / 图生文 / 视频分镜提示词模板 |
+**[ai-video-studio.md](skills/ai-video-studio.md)** — 一站式 AI 视频创作工作室
 
----
+`剧本分析 → 角色锁定 → 镜头拆解 → 提示词生成 → 表情注入 → 版本管理`
 
-## 长视频创作方案
-
-长线创作（漫剧/短剧）的核心挑战：
-1. **人物一致性** — 100+ 镜头中角色外貌不变
-2. **场景复用** — 同一场景跨镜头跨集复用
-3. **版本管理** — 迭代不丢失历史
-4. **称谓不乱** — 角色名/别名/标签体系
-
-推荐加载顺序：
-```
-director-storyboard  →  剧本拆解、角色场景提取
-prompt-lifecycle     →  版本管理、角色锁定、快照备份
-tpema-expression     →  人物表情控制（说话场景）
-multimodal-prompt    →  通用提示词模板
-```
+6 步全流程，一个 Skill 搞定。专为 AI 漫剧/短剧/动画长线创作设计。
 
 ---
 
-## 使用
+## 独立 Skills（可选单独加载）
 
-```
-将 .md 文件加载到你的 Agent
-→ Agent 按 Skill 指令工作
-→ 无需 API Key / 无需安装 / 无需代码
-```
+| Skill | 说明 |
+|-------|------|
+| [ai-video-studio.md](skills/ai-video-studio.md) | 完整工作流（推荐） |
+| [director-storyboard.md](skills/director-storyboard.md) | 导演分镜（剧本→提示词） |
+| [prompt-lifecycle.md](skills/prompt-lifecycle.md) | 提示词生命周期管理 |
+| [tpema-expression.md](skills/tpema-expression.md) | 标点→表情+语气+语速 |
+| [multimodal-prompt.md](skills/multimodal-prompt.md) | 文生图/图生文/视频分镜模板 |
