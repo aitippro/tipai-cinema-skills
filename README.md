@@ -63,7 +63,7 @@ ai-video-studio.md  ← 🎯 主入口，串联全流程
   │
   └── Step 6: 质检
         ├── Skill 层: 上下文表交叉对比
-        └── 代码层: validator/check-shots.js ← 16条规则真实校验
+        └── 代码层: validator/check-shots.js ← 19条规则真实校验
               │
               └── 最终提示词通过 multimodal-prompt.md 输出 (4变体/3角度/3格式)
 ```
