@@ -2,7 +2,7 @@
 /**
  * TipAi Cinema Skills — Shot Consistency Validator v2
  *
- * Validates AI-generated shot JSON against 16 quality rules.
+ * Validates AI-generated shot JSON against 19 quality rules.
  * Run: node validator/check-shots.js shots.json --project project.json
  *
  * Rules:
@@ -22,6 +22,9 @@
  *  14. Rhythm pacing check (warning)
  *  15. Version format validity (warning)
  *  16. Referential integrity — all refs resolve (error)
+ *  17. Micro-detail completeness (warning)
+ *  18. FACS injection for dialogue shots (warning)
+ *  19. Cross-audit marker presence (info)
  */
 
 const fs = require("fs");
@@ -238,12 +241,83 @@ function check(shots, project) {
       }
     }
 
+    // ── 17. Micro-detail completeness ──────────────────────
+    // Checks that prompt goes beyond label-level descriptions
+    if (s.prompt) {
+      const detailGaps = [];
+
+      // Lighting: must have Kelvin/angle/diffusion/ratio beyond just "warm light"
+      const hasLightingPhysics = /kelvin|\d{3,4}K|azimuth|elevation|diffusion|key.?fill|shadow.*hardness|falloff|practical|T\d+\.?\d*/i.test(s.prompt);
+      const hasLabelLighting = /warm light|soft light|amber glow|golden light|dim light|bright light|natural light/i.test(s.prompt);
+      if (hasLabelLighting && !hasLightingPhysics) {
+        detailGaps.push("lighting: label-level only (use specific Kelvin/angle/diffusion/ratio)");
+      }
+
+      // Camera: must have body/lens/T-stop/ISO beyond just "85mm lens"
+      const hasCameraPhysics = /T\d+\.?\d*|ISO\s*\d+|shutter|sensor|super.?35|full.?frame|ARRI|RED\s|SONY|Canon\sC|Blackmagic|focal/i.test(s.prompt);
+      const hasBasicCamera = /\d+mm/.test(s.prompt);
+      if (hasBasicCamera && !hasCameraPhysics) {
+        detailGaps.push("camera: basic lens only (add body/sensor/T-stop/ISO/shutter)");
+      }
+
+      // Character anatomy: must describe beyond CHAR_XX ID
+      const hasCharAnatomy = /hair.*#|hair.*hex|skin.*#|skin.*tone|iris.*#|nail.*mm|clothing.*fabric|SSS/i.test(s.prompt);
+      const hasCharRefs = /CHAR_\d+/.test(s.prompt);
+      if (hasCharRefs && !hasCharAnatomy) {
+        detailGaps.push("character: ID-only references (expand to hair/skin/eyes/hands/clothing anatomy)");
+      }
+
+      // Atmosphere: must specify particle type + density
+      const hasAtmosphere = /particle|dust.*density|fog.*dens|steam.*dens|smoke.*dens|convection|volumetric|ambient.?occlusion/i.test(s.prompt);
+      const isInterior = /interior|indoors|inside/i.test(s.prompt);
+      if (!hasAtmosphere && isInterior) {
+        detailGaps.push("atmosphere: missing particle type+density (even 'none' must be stated)");
+      }
+
+      // Color science: must have LUT or specific color parameters
+      const hasColorScience = /LUT|Kodak|ARRI.*LogC|Fuji|ACES|Rec.?709|grain.*\d+%|saturation.*[RGBCMYK]|contrast.*\d+:|warm.*\d+%.*cool/i.test(s.prompt);
+      if (!hasColorScience) {
+        detailGaps.push("color: missing LUT/grain%/contrast ratio/warm-cool balance specification");
+      }
+
+      if (detailGaps.length > 0) {
+        shotIssues.push({
+          severity: "warning",
+          rule: "detail_completeness",
+          msg: `Micro-detail gaps: ${detailGaps.join("; ")}`
+        });
+      }
+    }
+
+    // ── 18. FACS injection for dialogue shots ──────────────
+    if (s.prompt && /dialogue|speaking|says|said|asks|replies|whispers|murmurs|exclaims|shouts|sighs|conversation/.test(s.prompt)) {
+      const hasFACS = /FACS:|FACIAL:|AU\d+\s*=|AU\d+\s*[:=]\s*\d/i.test(s.prompt);
+      if (!hasFACS) {
+        shotIssues.push({
+          severity: "warning",
+          rule: "facs_injection",
+          msg: "Dialogue shot missing FACS AU vector (expected 'FACS: AU1=... AU2=...' format)"
+        });
+      }
+    }
+
+    // ── 19. Cross-audit marker ─────────────────────────────
+    if (s.prompt && !/AUDIT:|交叉审计|audit.*pass|cross.?audit/i.test(s.prompt)) {
+      // INFO only — doesn't fail, but suggests running through cross-audit
+      const dims = (s.prompt.match(/LIGHTING|CAMERA|CHAR_|FACS|ACTION|ATMOSPHERE|COLOR|MATERIAL|AUDIO|POST/g) || []);
+      const uniqueDims = new Set(dims);
+      if (uniqueDims.size >= 3) {
+        shotIssues.push({ severity: "info", rule: "cross_audit_missing", msg: "Micro-detail prompt has " + uniqueDims.size + "/10 dimensions but no cross-audit marker (run through cross-audit.md)" });
+      }
+    }
+
     // ── Aggregate ───────────────────────────────────────────
     if (shotIssues.length === 0) {
       stats.passed++;
     } else {
       for (const iss of shotIssues) {
         if (iss.severity === "error") stats.errors++;
+        else if (iss.severity === "info") {} // info doesn't count against stats
         else stats.warnings++;
         issues.push({ shot: s.id, ...iss });
       }
@@ -338,14 +412,14 @@ function main() {
     if (result.issues.length > 0) {
       console.log(`  详情:`);
       for (const iss of result.issues) {
-        const icon = iss.severity === "error" ? "❌" : "⚠";
+        const icon = iss.severity === "error" ? "❌" : iss.severity === "info" ? "ℹ️" : "⚠";
         console.log(`  ${icon} [${iss.shot}] ${iss.msg} (${iss.rule})`);
       }
       console.log();
     }
 
     if (verbose) {
-      console.log(`  规则说明 (16条):`);
+      console.log(`  规则说明 (19条):`);
       console.log(`  1. unique_id          — 镜头ID唯一性`);
       console.log(`  2. unknown_char       — 角色引用有效性`);
       console.log(`  3. unknown_scene      — 场景引用有效性`);
@@ -362,6 +436,9 @@ function main() {
       console.log(`  14. rhythm_pacing     — 节奏合理性`);
       console.log(`  15. version_format    — 版本号格式`);
       console.log(`  16. dangling_ref      — 引用完整性`);
+      console.log(`  17. detail_completeness — 微细节完整性(非标签级)`);
+      console.log(`  18. facs_injection    — 对话镜头FACS AU向量注入`);
+      console.log(`  19. cross_audit_missing — 微细节prompt缺少交叉审计标记`);
     }
   }
 

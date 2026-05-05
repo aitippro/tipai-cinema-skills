@@ -255,7 +255,46 @@ Negative: "[负面提示词]"
 --ar 16:9 --style raw
 ```
 
-#### 输出 B: 视频提示词 (Runway / Kling / Sora / Pika)
+#### 输出 B: 视频提示词 — 极致细节模式 (10维注入)
+
+激活条件: 用户说"极致"、"extreme detail"、"micro-detail"、"10维" 或加载 micro-detail-injection.md 后自动启用。
+
+每镜头输出格式 — 先结构化10维块，再合成自然语言:
+
+```
+━━ SHOT_{id} [{duration}s | {shotType} | {cameraMove} | ← {prev_id}] ━━
+
+LIGHTING: {kelvin}K key@{az}°/{el}° {diffusion}({mat}), key:fill {ratio}, rim sep {sep}°, shadow {hard}, falloff {falloff}, {practicals} practicals
+
+CAMERA: {body} {sensor}, {lens} @ {tStop}, ISO {iso}, shutter {angle}°, {stab}, H{height}cm D{dist}cm T{tilt}°
+
+CHAR_{id}: HAIR #{color} {len}cm {texture} fly{flyaway}; SKIN #{tone} {texture} SSS[{zones}] oil{oil}; EYES iris#{iris} ct_{catchlight} lash_{density}; HANDS nail{mm}mm #{polish}; CLOTHING {fabric} wea{weave} dra{drape}
+
+FACS: AU1={}...AU27={} (23 values) | BLINK:{bpm}bpm PUPIL:{mm}mm BREATH:{cpm}cpm | HEAD:p{p}° y{y}° r{r}° GAZE:{state}
+  对话镜头附加 VISEME: [{time}:{phoneme}:{AU25}:{AU26}:{AU27}]...
+
+ACTION: speed{cm/s}cm/s, {trajectory}, {Hz}Hz, {cm}cm amp, {accel}, weight{feel}
+
+ATMOSPHERE: {particle} dens{density} size{um}μm, {convection}, humid:{humidity}, vol{volumetric}, AO{ao}
+
+COLOR: LUT_{lut}, grain{grain}%, sat R{sr} G{sg} B{sb}, {contrast}:1, BP{bp}IRE WP{wp}IRE, {harmony}, {warm}%warm
+
+MATERIAL: [{key_surfaces}: rough{0.x} spec{0.x} sss{0.x} fresnel{0.x} metal{0.x}...]
+
+AUDIO: src[{x},{y},{z}]cm, reverb_{type} {ms}ms, ambient:"{ambient}"
+
+POST: grain_{type} {grain%}%, halation{0.x}, CA{ca}px, distort{distortion}%, vignette{vignette}, gate{gate}px
+
+SYNTHESIZED PROMPT:
+"[所有10维度合成为连贯英文，100-400词]"
+
+AUDIT: ✅L1:self-consistent ✅L2:all-10-dims ✅L3:physics ✅L4:refs ✅L5:synthesizable → DELIVER
+```
+
+#### 输出 B: 视频提示词 — 标准模式 (Quick Mode)
+
+无极致细节要求时使用简化版:
+
 ```
 **SHOT_XXX [Xs | 运镜 | 承接 SHOT_YYY]**
 A [运镜] shot. [主体描述]. [动作描述]. [光线环境]. [氛围]. [风格词], [帧率], [质量标签].

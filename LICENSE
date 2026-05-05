@@ -1,17 +1,21 @@
-# TipAi Cinema Skills 许可协议
+MIT License
 
 Copyright (c) 2026 TipAi
 
-## 授权
-- ✅ 个人免费使用、学习、研究、教学
-- ✅ 修改源码用于个人项目
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-## 禁止
-- ❌ 商业使用、转售、嵌入商业产品
-- ❌ 未经授权的营利性分发
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-## 免责
-本软件按"原样"提供，不提供任何明示或暗示的保证。
-
-## 商业授权
-如需商业使用授权，请联系：contact@tipai.dev
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
