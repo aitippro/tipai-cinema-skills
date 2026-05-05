@@ -70,7 +70,7 @@ function check(shots, project) {
       }
     }
 
-    // 6. Prompt completeness check
+    // 6. Prompt completeness
     if (s.prompt) {
       const missing = [];
       if (!hasRoleRef(s.prompt, shotChars)) missing.push("character reference");
@@ -79,6 +79,41 @@ function check(shots, project) {
       if (!hasMovement(s.prompt) && !s.cameraMove) missing.push("camera movement");
       if (missing.length > 0) {
         shotIssues.push({ severity: "warning", rule: "prompt_completeness", msg: `Missing: ${missing.join(", ")}` });
+      }
+    }
+
+    // 7. Continuity: transition defined (skip first shot)
+    if (i > 0 && s.transition && !s.transition.from) {
+      shotIssues.push({ severity: "warning", rule: "transition_missing", msg: "No transition from previous shot defined" });
+    }
+
+    // 8. Continuity: character state carries over
+    if (prev && s.characters && prev.characters) {
+      for (const sc of s.characters) {
+        if (typeof sc === "object" && sc.id) {
+          const pc = prev.characters.find((c) => (typeof c === "object" ? c.id : c) === sc.id);
+          if (pc && typeof pc === "object" && pc.stateAfter && sc.position) {
+            // Check position continuity: character should start where previous ended
+            const prevEnd = pc.stateAfter;
+            const curStart = sc.position;
+            // Simple heuristic: if previous shot had character "not present" but current has them present, check transition
+            if (prevEnd === "—" && curStart !== "未出场" && curStart !== "—") {
+              shotIssues.push({ severity: "warning", rule: "char_continuity", msg: `${sc.id}: appeared without transition explanation` });
+            }
+          }
+        }
+      }
+    }
+
+    // 9. Continuity: light delta within same scene
+    if (prev && s.scene && prev.scene && s.scene.id === prev.scene.id && s.scene.delta !== undefined && Math.abs(s.scene.delta) > 3) {
+      shotIssues.push({ severity: "warning", rule: "light_jump", msg: `Light changed ${s.scene.delta}° within same scene (max ±3° without scene change)` });
+    }
+
+    // 10. Continuity: scene switch has transition explanation
+    if (prev && s.scene && prev.scene && s.scene.id !== prev.scene.id) {
+      if (!s.transition || !s.transition.type || s.transition.type === "—") {
+        shotIssues.push({ severity: "warning", rule: "scene_switch_transition", msg: `Scene switch ${prev.scene.id}→${s.scene.id} has no transition type` });
       }
     }
 
@@ -119,7 +154,9 @@ function main() {
     process.exit(1);
   }
 
-  const shots = load(args[0]);
+  let shots = load(args[0]);
+  // Handle context-table format (object with shots array)
+  if (!Array.isArray(shots) && shots.shots) shots = shots.shots;
   const projIdx = args.indexOf("--project");
   let project = { characters: [], scenes: [] };
   if (projIdx >= 0) {

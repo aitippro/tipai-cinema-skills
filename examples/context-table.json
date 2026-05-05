@@ -1,0 +1,71 @@
+{
+  "project": "咖啡店的回忆",
+  "shots": [
+    {
+      "id": "SHOT_001",
+      "time": "0:00",
+      "duration": 3,
+      "shotType": "ECU",
+      "cameraMove": "Static",
+      "transition": { "from": null, "type": "—", "detail": "开场建立" },
+      "characters": [
+        { "id": "CHAR_01", "position": "坐窗边/右手握杯", "emotion": "平静/若有所思", "stateAfter": "杯在手/凝视杯中" },
+        { "id": "CHAR_02", "position": "未出场", "emotion": "—", "stateAfter": "—" }
+      ],
+      "scene": { "id": "SCENE_01", "state": "基线", "light": "暖光15:00", "delta": 0 },
+      "prompt": "SCENE_01 interior. ECU of CHAR_01 hands around coffee cup. Steam rising. Warm amber light, soft bokeh. Static."
+    },
+    {
+      "id": "SHOT_002",
+      "time": "0:03",
+      "duration": 5,
+      "shotType": "MS",
+      "cameraMove": "Push in",
+      "transition": { "from": "SHOT_001", "type": "匹配剪辑", "detail": "从杯→抬头，形状匹配(圆形杯口→圆形门)" },
+      "characters": [
+        { "id": "CHAR_01", "position": "坐窗边/放杯", "emotion": "由平静→微惊→嘴角上扬", "stateAfter": "半起身/面朝门/眼含笑意" },
+        { "id": "CHAR_02", "position": "未出场", "emotion": "—", "stateAfter": "—" }
+      ],
+      "scene": { "id": "SCENE_01", "state": "不变", "light": "暖光+0", "delta": 0 },
+      "prompt": "SCENE_01 interior. MS of CHAR_01 at window seat. Slow push in as she looks up, faint smile forming. Golden light from window. Bokeh cafe background."
+    },
+    {
+      "id": "SHOT_003",
+      "time": "0:08",
+      "duration": 7,
+      "shotType": "WS",
+      "cameraMove": "Pan",
+      "transition": { "from": "SHOT_002", "type": "动作衔接", "detail": "CHAR_01抬头看→CHAR_02推门入" },
+      "characters": [
+        { "id": "CHAR_01", "position": "起身/走向门口", "emotion": "喜悦/期待", "stateAfter": "距门2步/张开双臂" },
+        { "id": "CHAR_02", "position": "推门入/扫视店内", "emotion": "焦急→定位→放松", "stateAfter": "看到CHAR_01/停下脚步" }
+      ],
+      "scene": { "id": "SCENE_01", "state": "不变", "light": "暖光+0", "delta": 0 },
+      "prompt": "SCENE_01 interior, WS. CHAR_02 pushes door, brass bell rings. Slow pan as he scans room, spots CHAR_01. She stands, arms opening. Warm amber light, soft shadows."
+    },
+    {
+      "id": "SHOT_004",
+      "time": "0:15",
+      "duration": 8,
+      "shotType": "WS",
+      "cameraMove": "Tracking",
+      "transition": { "from": "SHOT_003", "type": "跟随转场", "detail": "摄影机跟随CHAR_02推门→门开→SCENE_02外景" },
+      "characters": [
+        { "id": "CHAR_01", "position": "踏出门槛/深吸气", "emotion": "释然/温暖", "stateAfter": "并肩行走/自然搭话" },
+        { "id": "CHAR_02", "position": "跟出/手插兜", "emotion": "放松/微笑", "stateAfter": "并肩/偶尔侧头看C01" }
+      ],
+      "scene": { "id": "SCENE_02", "state": "基线", "light": "黄昏17:00", "delta": -10 },
+      "prompt": "SCENE_02 exterior, golden hour sunset. Wide tracking shot. CHAR_01 steps through cafe door into warm backlight. CHAR_02 follows, hands in pockets. They walk cobblestone street side by side. Long shadows, cinematic 24fps."
+    }
+  ],
+  "continuityLog": {
+    "lastUpdate": "SHOT_004",
+    "characters": {
+      "CHAR_01": { "position": "街边/并肩行走", "emotion": "释然/温暖", "lightingExposure": "金色逆光" },
+      "CHAR_02": { "position": "街边/并肩行走", "emotion": "放松/微笑", "lightingExposure": "金色逆光" }
+    },
+    "scene": { "id": "SCENE_02", "light": "黄昏17:00" },
+    "storyTime": "17:05",
+    "transitionTypes": ["匹配剪辑", "动作衔接", "跟随转场"]
+  }
+}
