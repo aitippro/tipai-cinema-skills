@@ -91,6 +91,72 @@ node validator/check-shots.js examples/context-table.json --project examples/pro
 
 ---
 
+## 📖 使用教程
+
+### 场景：用户贴了一段小说，想做成 AI 短剧
+
+**Step 1: 加载 Skill**
+
+将 `skills/ai-video-studio.md` 的内容复制给 Agent，或直接告诉 Agent：
+
+> "加载 https://github.com/aitippro/tipai-cinema-skills/blob/main/skills/ai-video-studio.md 这个 Skill"
+
+**Step 2: 贴剧本**
+
+```
+分析这个剧本，按 Skill 工作流处理：
+
+她推开咖啡馆的木门，门上的铜铃发出清脆的声响。
+午后的阳光斜斜地洒进来，给每一张木桌镀上一层金色。
+她扫视了一圈——角落里的位置还空着，
+那是他们第一次见面时坐的地方。
+
+她深吸一口气，走向角落。
+指尖轻轻划过沿途的桌面，仿佛在触摸记忆。
+坐下的瞬间，她的眼眶微微泛红，
+嘴角却扬起一抹若有若无的笑。
+
+门外，一个人影停住了脚步。
+他的手指悬在铜铃上方，迟迟没有推开。
+```
+
+**Step 3: Agent 自动执行 6 步工作流**
+
+Agent 会按 Skill 指令依次执行：
+
+| 步骤 | Agent 做什么 | 输出 |
+|------|-------------|------|
+| 1. 剧本分析 | 提取角色、场景、情感曲线 | 角色表 + 场景表 |
+| 2. 角色锁定 | 为每个角色建立档案 | `[CHAR_01]` 锁定描述 |
+| 3. 镜头拆解 | 逐段拆为镜头序列 | 编号镜头清单 |
+| 4. 提示词生成 | 每个镜头输出 AI 视频提示词 | 英文 prompt |
+| 5. 表情注入 | 对话镜头注入标点→AU 映射 | 表情控制数据 |
+| 6. 连续性校验 | 交叉检查角色/场景/光线 | 质检报告 |
+
+**Step 4: 触发生成**
+
+当剧本分析完成、角色锁定后，用户可以逐镜头触发生成：
+
+```
+生成镜头 1-5 的提示词
+```
+
+或批量：
+
+```
+拆解全部镜头，生成所有提示词，然后质检
+```
+
+**Step 5: 验证输出**
+
+将 Agent 生成的 JSON 保存为 `my-shots.json`，运行验证器：
+
+```bash
+node validator/check-shots.js my-shots.json --project my-project.json
+```
+
+---
+
 ## 🚀 快速开始
 
 ```bash
