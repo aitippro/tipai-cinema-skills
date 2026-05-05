@@ -12,15 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run validator against examples
-        run: |
-          echo "=== shots-example.json ==="
-          node validator/check-shots.js examples/shots-example.json --project examples/project.json
-          echo ""
-          echo "=== context-table.json ==="
-          node validator/check-shots.js examples/context-table.json --project examples/project.json
+      - name: Test standard example (shots-example.json)
+        run: node validator/check-shots.js examples/shots-example.json --project examples/project.json
 
-      - name: Run validator with JSON output
-        run: |
-          echo "=== JSON output test ==="
-          node validator/check-shots.js examples/shots-example.json --project examples/project.json --json | python3 -m json.tool
+      - name: Test context-table example
+        run: node validator/check-shots.js examples/context-table.json --project examples/project.json
+
+      - name: Test extreme-shot example
+        run: node validator/check-shots.js examples/extreme-shot.json --project examples/project.json
+
+      - name: JSON output test (extreme-shot)
+        run: node validator/check-shots.js examples/extreme-shot.json --project examples/project.json --json
+
+      - name: Verbose output test
+        run: node validator/check-shots.js examples/extreme-shot.json --project examples/project.json --verbose
