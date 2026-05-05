@@ -13,7 +13,7 @@
         { "id": "CHAR_02", "position": "未出场", "emotion": "—", "stateAfter": "—" }
       ],
       "scene": { "id": "SCENE_01", "state": "基线", "light": "暖光15:00", "delta": 0 },
-      "prompt": "SCENE_01 interior. ECU of CHAR_01 hands around coffee cup. Steam rising. Warm amber light, soft bokeh. Static."
+      "prompt": "SCENE_01 interior. ECU of CHAR_01 hands around coffee cup. Steam rising. Warm amber light, soft bokeh. Static. Photorealistic, 8k, cinematic."
     },
     {
       "id": "SHOT_002",
@@ -27,7 +27,7 @@
         { "id": "CHAR_02", "position": "未出场", "emotion": "—", "stateAfter": "—" }
       ],
       "scene": { "id": "SCENE_01", "state": "不变", "light": "暖光+0", "delta": 0 },
-      "prompt": "SCENE_01 interior. MS of CHAR_01 at window seat. Slow push in as she looks up, faint smile forming. Golden light from window. Bokeh cafe background."
+      "prompt": "SCENE_01 interior. MS of CHAR_01 at window seat. Slow push in as she looks up, faint smile forming. Golden light from window. Bokeh cafe background. Cinematic, photorealistic, 8k."
     },
     {
       "id": "SHOT_003",
@@ -41,7 +41,7 @@
         { "id": "CHAR_02", "position": "推门入/扫视店内", "emotion": "焦急→定位→放松", "stateAfter": "看到CHAR_01/停下脚步" }
       ],
       "scene": { "id": "SCENE_01", "state": "不变", "light": "暖光+0", "delta": 0 },
-      "prompt": "SCENE_01 interior, WS. CHAR_02 pushes door, brass bell rings. Slow pan as he scans room, spots CHAR_01. She stands, arms opening. Warm amber light, soft shadows."
+      "prompt": "SCENE_01 interior, WS. CHAR_02 pushes door, brass bell rings. Slow pan as he scans room, spots CHAR_01. She stands, arms opening. Warm amber light, soft shadows. Cinematic, photorealistic, 8k."
     },
     {
       "id": "SHOT_004",

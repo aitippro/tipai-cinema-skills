@@ -2,6 +2,8 @@
 
 将剧本/小说拆解为可直接输入 AI 视频生成工具的分镜提示词。适用于动态漫画、AI 短剧、虚拟制片。
 
+> **协作关系:** 本 Skill 被 ai-video-studio.md 引用（主入口 Skill 调用本 Skill 的拆解规则）。角色/场景的数据格式遵循 prompt-lifecycle.md 的统一 schema。生成的镜头提示词最终由 multimodal-prompt.md 输出。
+
 ## 工作流程
 
 ```

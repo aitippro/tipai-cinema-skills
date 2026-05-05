@@ -2,21 +2,25 @@
   {
     "id": "SHOT_001", "sceneId": "SCENE_01", "characters": ["CHAR_01"],
     "duration": 3, "shotType": "ECU", "cameraMove": "Static",
+    "transition": { "from": null, "type": "—", "detail": "开场建立" },
     "prompt": "SCENE_01 interior, afternoon. Extreme close-up of CHAR_01 hands turning coffee cup. Warm amber light, soft bokeh background, steam rising gently. Static shot. Photorealistic, 8k, cinematic color."
   },
   {
     "id": "SHOT_002", "sceneId": "SCENE_01", "characters": ["CHAR_01"],
     "duration": 5, "shotType": "MS", "cameraMove": "Push in",
-    "prompt": "SCENE_01 interior. Medium shot of CHAR_01 sitting by window. Slow push in as she looks up toward door. Golden afternoon light streaming through window, dust particles floating. Shallow depth of field. Photorealistic, cinematic."
+    "transition": { "from": "SHOT_001", "type": "匹配剪辑", "detail": "杯→抬头，形状匹配" },
+    "prompt": "SCENE_01 interior. Medium shot of CHAR_01 sitting by window. Slow push in as she looks up toward door. Golden afternoon light streaming through window, dust particles floating. Shallow depth of field. Photorealistic, cinematic, 8k."
   },
   {
     "id": "SHOT_003", "sceneId": "SCENE_01", "characters": ["CHAR_02", "CHAR_01"],
     "duration": 7, "shotType": "WS", "cameraMove": "Pan",
-    "prompt": "SCENE_01 interior, afternoon. Wide shot of CHAR_02 entering cafe, brass bell ringing. Slow pan following him as he walks toward CHAR_01 at window seat. Warm amber lighting, soft shadows."
+    "transition": { "from": "SHOT_002", "type": "动作衔接", "detail": "CHAR_01抬头看→CHAR_02推门入" },
+    "prompt": "SCENE_01 interior, afternoon. Wide shot of CHAR_02 entering cafe, brass bell ringing. Slow pan following him as he walks toward CHAR_01 at window seat. Warm amber lighting, soft shadows. Cinematic, photorealistic, 8k."
   },
   {
     "id": "SHOT_004", "sceneId": "SCENE_02", "characters": ["CHAR_02", "CHAR_01"],
     "duration": 8, "shotType": "WS", "cameraMove": "Tracking",
-    "prompt": "SCENE_02 exterior, golden hour sunset. Wide tracking shot following CHAR_02 and CHAR_01 walking side by side down cobblestone street. Backlit by setting sun, long shadows stretching. Cinematic, 24fps, film grain."
+    "transition": { "from": "SHOT_003", "type": "跟随转场", "detail": "摄影机跟随推门→外景" },
+    "prompt": "SCENE_02 exterior, golden hour sunset. Wide tracking shot following CHAR_02 and CHAR_01 walking side by side down cobblestone street. Backlit by setting sun, long shadows stretching. Cinematic, 24fps, film grain, photorealistic."
   }
 ]

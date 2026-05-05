@@ -2,6 +2,8 @@
 
 剧本→AI视频。内置连续性与过渡管理系统。
 
+> **协作关系:** 本 Skill 是主入口。镜头拆解规则见 director-storyboard.md，角色/场景锁定格式见 prompt-lifecycle.md，表情注入详见 tpema-expression.md，最终提示词输出见 multimodal-prompt.md。
+
 ---
 
 ## 核心机制：持续上下文表
@@ -138,6 +140,8 @@ C02: 已推门/侧身让路/焦急 → 跟出/手插兜/放松
 ---
 
 ## Step 4: 镜头拆解
+
+> **拆解规则详见 director-storyboard.md**，此处仅列出核心原则。完整模板（含景别/运镜参考表）参见 director-storyboard.md 第二步。
 
 ### 拆解规则
 - 动作变化 → 新镜头

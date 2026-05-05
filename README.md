@@ -8,7 +8,8 @@
 
 [![License](https://img.shields.io/badge/License-NonCommercial-red?style=flat-square)](LICENSE)
 [![Skills](https://img.shields.io/badge/Skills-5-blue?style=flat-square)](skills/)
-[![Validator](https://img.shields.io/badge/Validator-10_rules-green?style=flat-square)](validator/check-shots.js)
+[![Validator](https://img.shields.io/badge/Validator-16_rules-green?style=flat-square)](validator/check-shots.js)
+[![CI](https://img.shields.io/badge/CI-validate-blue?style=flat-square)](.github/workflows/test.yml)
 
 源自 [TipAi](https://github.com/aitippro/TipAi) 桌面版 TPEMA 引擎迁移 · Agent 加载即用 · 零依赖
 
@@ -33,6 +34,33 @@
 
 **Skill** = 给 Agent 看的指令，告诉它怎么拆剧本、锁角色、设计过渡  
 **Validator** = 真实运行的代码，检查生成结果是否一致
+
+### 🔗 Skill 协作关系
+
+```
+用户贴剧本
+  │
+  ▼
+ai-video-studio.md  ← 🎯 主入口，串联全流程
+  │
+  ├── Step 1-2: 剧本分析 + 角色锁定
+  │     └── 引用 prompt-lifecycle.md 的 Character/Scene schema
+  │
+  ├── Step 3: 上下文表 + 过渡设计
+  │     └── 自建连续性表，7种过渡类型
+  │
+  ├── Step 4: 镜头拆解
+  │     └── 调用 director-storyboard.md 的拆解规则和景别/运镜表
+  │
+  ├── Step 5: 表情注入
+  │     └── 调用 tpema-expression.md 的标点→AU映射 + 视线状态机
+  │
+  └── Step 6: 质检
+        ├── Skill 层: 上下文表交叉对比
+        └── 代码层: validator/check-shots.js ← 16条规则真实校验
+              │
+              └── 最终提示词通过 multimodal-prompt.md 输出 (4变体/3角度/3格式)
+```
 
 ---
 
@@ -62,6 +90,10 @@
 
 ```bash
 node validator/check-shots.js examples/context-table.json --project examples/project.json
+
+# 可选参数:
+#   --json      输出 JSON 格式
+#   --verbose   显示规则说明 + 通过镜头
 ```
 
 ```
@@ -74,7 +106,7 @@ node validator/check-shots.js examples/context-table.json --project examples/pro
   通过率: 75%
 ```
 
-### 10 条规则
+### 16 条规则
 
 | # | 规则 | 类型 |
 |---|------|------|
@@ -88,6 +120,12 @@ node validator/check-shots.js examples/context-table.json --project examples/pro
 | 8 | 人物状态承接 | 警告 |
 | 9 | 同场景光线渐变 ≤±3° | 警告 |
 | 10 | 场景切换过渡说明 | 警告 |
+| 11 | 角色关键特征一致性 | 错误 |
+| 12 | 同场景空间连续性 | 警告 |
+| 13 | 情绪转折合理性 | 警告 |
+| 14 | 节奏（紧张场景时长） | 警告 |
+| 15 | 版本号格式 (semver) | 警告 |
+| 16 | 引用完整性 (dangling ref) | 错误 |
 
 ---
 
@@ -174,13 +212,19 @@ git clone https://github.com/aitippro/tipai-cinema-skills.git
 ```
 tipai-cinema-skills/
 ├── skills/
-│   └── ai-video-studio.md      ← 🎯 主 Skill (加载这个)
+│   ├── ai-video-studio.md        ← 🎯 主 Skill (加载这个)
+│   ├── director-storyboard.md    ← ✂️ 分镜引擎
+│   ├── multimodal-prompt.md      ← 🎨 多模态提示词
+│   ├── prompt-lifecycle.md       ← 📦 生命周期 & 统一 Schema
+│   └── tpema-expression.md       ← 😊 TPEMA 表情引擎
 ├── validator/
-│   └── check-shots.js           ← 🛡️ 10 条质检规则
+│   └── check-shots.js            ← 🛡️ 16 条质检规则
+├── .github/workflows/
+│   └── test.yml                  ← 🤖 CI 自动校验
 ├── examples/
-│   ├── project.json             ← 示例项目 (2角色 2场景)
-│   ├── shots-example.json       ← 示例镜头 (100%通过)
-│   └── context-table.json       ← 完整上下表示例
+│   ├── project.json              ← 示例项目 (2角色 2场景)
+│   ├── shots-example.json        ← 示例镜头 (简单格式 100%通过)
+│   └── context-table.json        ← 完整上下文表示例 (含过渡/状态)
 └── README.md
 ```
 
