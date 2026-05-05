@@ -1,0 +1,22 @@
+{
+  "name": "咖啡店的回忆",
+  "characters": [
+    {
+      "id": "CHAR_01",
+      "name": "林小雨",
+      "keyFeatures": "左眼角泪痣, 银色细链项链",
+      "referencePrompt": "Female, 25yo, East Asian, shoulder-length black hair, faint beauty mark under left eye, silver chain necklace. White blouse, navy skirt. Natural makeup, warm smile."
+    },
+    {
+      "id": "CHAR_02",
+      "name": "陈默",
+      "keyFeatures": "黑框眼镜, 右手腕表, 微驼背",
+      "referencePrompt": "Male, 30yo, East Asian, black frame glasses, watch on right wrist, slightly hunched posture. Gray sweater, dark trousers. Clean-shaven, tired eyes."
+    }
+  ],
+  "scenes": [
+    { "id": "SCENE_01", "name": "老城区咖啡馆", "lighting": "warm amber afternoon light", "time": "afternoon" },
+    { "id": "SCENE_02", "name": "咖啡馆外街道", "lighting": "golden hour backlight", "time": "sunset" }
+  ],
+  "style": "日系清新, 暖色调, 16:9"
+}
