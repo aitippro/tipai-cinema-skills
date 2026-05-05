@@ -1,57 +1,88 @@
 # TipAi Skills
 
-可复用的 AI 技能模块集合 — 从 TipAi 桌面应用中提取的独立功能包。
+独立可克隆的多模态提示词引擎。直接加载使用，零框架依赖。
 
-## 技能列表
-
-### 🎨 多模态提示词引擎 (`packages/multimodal`)
-
-AI 驱动的多模态提示词生成，支持：
-- **文生图** — 为 DALL-E / Midjourney / Stable Diffusion 生成优化提示词
-- **图生文** — 图像分析、描述、OCR 提示词
-- **视频分镜** — 专业分镜脚本 + 表情控制指令
-- **文件解析** — .txt / .docx / .pdf → 文本 + 风格分析
-- **风格分析** — 本地启发式算法检测色彩、情绪、叙事节奏
-
-```typescript
-import { generateMultimodalPrompt, getMultimodalModes } from "tipai-skills/multimodal";
-
-const result = await generateMultimodalPrompt(
-  "一只穿宇航服的猫在月球漫步", 
-  "text-to-image",
-  "deepseek-chat", 
-  "sk-xxx",
-  myAICaller  // 实现 AICaller 接口
-);
-```
-
-### 🎭 TPEMA 表情控制引擎 (`packages/expression`)
-
-文本驱动数字人面部微表情引擎（Text-Prompt Expression Micro-Animation）：
-- **情绪分析** — 双语三级词典，≥120 词条，贪心整词匹配
-- **标点→AU 映射** — ，→AU1+2 挑眉；？→AU1+2+AU5 惊讶；！→AU20+AU5+AU12
-- **5 种缓动曲线** — linear / easeInOut / elasticOut / backOut / sineInOut
-- **30fps 时间轴** — 逐标点插值 + AU 状态 + 视线机
-- **Perlin 噪声** — 确定性微扰动，消除机械感
-- **4 种导出** — JSON / CSV / FACS-XML / Prompt-Text
-
-```typescript
-import { DEFAULT_EXPRESSION_CONTROL, DEEPSEEK_OPTIMIZED_EXPRESSION } from "tipai-skills/expression";
-```
-
-### 👁️ AI 视觉分析 (`packages/ai-vision`)
-
-统一的 AI Vision API 客户端接口：
-- 支持 OpenAI / Claude / Gemini Vision API
-- 自定义 AI 调用器注入
-
-## 安装
+## 快速开始
 
 ```bash
-npm install @tipai/skills
+git clone https://github.com/aitippro/tipai-skills.git
+cd tipai-skills
+npm install
+```
+
+## 使用
+
+```typescript
+import { createMultimodalSkill, analyzeStyle, parseTextFile } from "tipai-skills"
+
+// 1. 创建 skill 实例，注入 AI 调用器
+const skill = createMultimodalSkill({
+  ai: {
+    async chat({ model, systemPrompt, userMessage, temperature }) {
+      // 调用你的 AI 模型（DeepSeek / OpenAI / Claude / ...）
+      const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}` },
+        body: JSON.stringify({
+          model, temperature, max_tokens: 4000,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+        }),
+      })
+      const data = await res.json()
+      return data.choices[0].message.content
+    },
+    // vision() 是可选的 — 支持图片分析
+    async vision({ model, systemPrompt, userMessage, imageBase64 }) { ... }
+  },
+})
+
+// 2. 生成提示词
+const result = await skill.generate({
+  mode: "text-to-image",        // "text-to-image" | "image-to-text" | "video-storyboard"
+  request: "一只穿宇航服的橘猫在月球漫步",
+  enableExpression: false,       // 视频分镜启用表情控制
+  styleAnalysis: undefined,      // 可选：预计算的风格分析
+  fileContent: undefined,        // 可选：参考文本内容
+})
+```
+
+## 三种模式
+
+| 模式 | 说明 | 推荐模型 |
+|------|------|---------|
+| `text-to-image` | 生成 4 种风格变体的图像生成提示词 | DALL-E 3 / Stable Diffusion / Midjourney |
+| `image-to-text` | 生成 3 种角度的图像分析提示词 | GPT-4V / Claude 3 Vision |
+| `video-storyboard` | 专业分镜脚本 + 可选表情控制 | Runway / Pika / Kling / Sora |
+
+## 风格分析
+
+```typescript
+import { analyzeStyle } from "tipai-skills"
+
+const style = analyzeStyle("她推开木门，铜铃清脆作响...")
+// => { primaryStyle: "慢节奏抒情", colorPalette: ["金","红","白"], mood: "宁静", genre: "言情", pacing: "慢节奏" }
+```
+
+## 文件解析
+
+```typescript
+import { parseTextFile } from "tipai-skills"
+
+const buffer = await fs.readFile("novel.txt")
+const result = await parseTextFile(buffer.buffer, "novel.txt")
+// => { text: "...", fileType: "txt", charCount: 1234 }
+// 支持: .txt / .docx / .pdf
+```
+
+## 测试
+
+```bash
+DEEPSEEK_API_KEY=sk-xxx npm test
 ```
 
 ## 许可证
 
 非商业使用许可 — 个人免费使用，禁止商业使用/转售。
-详见 [LICENSE](LICENSE.md)

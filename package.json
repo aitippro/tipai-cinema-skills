@@ -1,18 +1,21 @@
 {
   "name": "tipai-skills",
   "version": "1.0.0",
-  "private": true,
-  "description": "TipAi Skills — 多模态提示词引擎、TPEMA表情控制、风格分析等可复用AI技能模块",
-  "scripts": {
-    "check": "tsc --noEmit",
-    "test": "vitest run"
+  "type": "module",
+  "description": "TipAi Skills — 独立多模态提示词引擎（可克隆直接使用）",
+  "exports": {
+    ".": "./src/index.ts",
+    "./multimodal": "./src/index.ts"
   },
-  "dependencies": {
+  "scripts": {
+    "test": "npx tsx scripts/test.ts"
+  },
+  "optionalDependencies": {
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
-    "typescript": "^5.9.0",
-    "vitest": "^4.0.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0"
   }
 }
