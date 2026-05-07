@@ -5,18 +5,56 @@
       "id": "CHAR_01",
       "name": "林小雨",
       "keyFeatures": "左眼角泪痣, 银色细链项链",
-      "referencePrompt": "Female, 25yo, East Asian, shoulder-length black hair, faint beauty mark under left eye, silver chain necklace. White blouse, navy skirt. Natural makeup, warm smile."
+      "anatomy": {
+        "hair": { "color": "#1a1a1a", "length": 25, "texture": "straight", "flyaway": 0.2, "highlights": "#3a3028" },
+        "skin": { "tone": "#f5f0e8", "texture": "fine_pores", "sssZones": ["cheek", "nose", "ear"], "oiliness": 0.15 },
+        "eyes": { "irisColor": "#4a2810", "catchlight": "window_rect", "lashDensity": "medium" },
+        "hands": { "nailLength": 2, "nailPolish": "#c48a7c", "veinVisibility": 0.2, "knuckleDef": 0.4 },
+        "clothing": { "fabric": "cotton_blend", "weaveVisibility": 0.3, "drapeStiffness": 0.4, "wearPatterns": "slight_cuff_fray" }
+      },
+      "referencePrompt": "Female, 25yo, East Asian, shoulder-length straight black hair #1a1a1a, fine-pored warm skin #f5f0e8, beauty mark under left eye, brown irises, silver chain necklace, natural makeup, white blouse, navy skirt.",
+      "negativePrompt": "beard, glasses, different hair color, western features"
     },
     {
       "id": "CHAR_02",
       "name": "陈默",
       "keyFeatures": "黑框眼镜, 右手腕表, 微驼背",
-      "referencePrompt": "Male, 30yo, East Asian, black frame glasses, watch on right wrist, slightly hunched posture. Gray sweater, dark trousers. Clean-shaven, tired eyes."
+      "anatomy": {
+        "hair": { "color": "#0d0d0d", "length": 8, "texture": "straight", "flyaway": 0.1, "highlights": "#1a1a1a" },
+        "skin": { "tone": "#f0e6d8", "texture": "visible_pores", "sssZones": ["nose", "ear"], "oiliness": 0.2 },
+        "eyes": { "irisColor": "#1a0a00", "catchlight": "softbox_square", "lashDensity": "sparse" },
+        "hands": { "nailLength": 1, "nailPolish": null, "veinVisibility": 0.4, "knuckleDef": 0.5 },
+        "clothing": { "fabric": "wool", "weaveVisibility": 0.6, "drapeStiffness": 0.6, "wearPatterns": "lightly_pilled_cuffs" }
+      },
+      "referencePrompt": "Male, 30yo, East Asian, short straight black hair #0d0d0d, visible-pored skin #f0e6d8, black frame glasses, dark brown eyes, watch on right wrist, slightly hunched posture, gray wool sweater, dark trousers, clean-shaven, tired eyes.",
+      "negativePrompt": "different hair color, without glasses, western features, muscular build"
     }
   ],
   "scenes": [
-    { "id": "SCENE_01", "name": "老城区咖啡馆", "lighting": "warm amber afternoon light", "time": "afternoon" },
-    { "id": "SCENE_02", "name": "咖啡馆外街道", "lighting": "golden hour backlight", "time": "sunset" }
+    {
+      "id": "SCENE_01",
+      "name": "老城区咖啡馆",
+      "lighting": "4200K warm amber afternoon light",
+      "time": "afternoon",
+      "kelvinBaseline": 4200,
+      "environment": {
+        "location": "老城区街角咖啡馆",
+        "props": ["木桌", "铜铃门", "老式收银机", "陶瓷咖啡杯"],
+        "atmosphere": "steam+dust, dens0.10"
+      }
+    },
+    {
+      "id": "SCENE_02",
+      "name": "咖啡馆外街道",
+      "lighting": "3800K golden hour backlight",
+      "time": "sunset",
+      "kelvinBaseline": 3800,
+      "environment": {
+        "location": "咖啡馆外鹅卵石街道",
+        "props": ["街灯", "梧桐树"],
+        "atmosphere": "dust, dens0.05"
+      }
+    }
   ],
-  "style": "日系清新, 暖色调, 16:9"
+  "style": "日系清新, 暖色调, 16:9, 24fps"
 }

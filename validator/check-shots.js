@@ -1,30 +1,9 @@
 #!/usr/bin/env node
 /**
- * TipAi Cinema Skills — Shot Consistency Validator v2
+ * TipAi Cinema Skills — Shot Consistency Validator v3
  *
- * Validates AI-generated shot JSON against 19 quality rules.
+ * Validates AI-generated shot JSON against 20 quality rules.
  * Run: node validator/check-shots.js shots.json --project project.json
- *
- * Rules:
- *   1. Shot ID uniqueness (error)
- *   2. Character references valid (error)
- *   3. Scene references valid (error)
- *   4. Duration reasonability (warning/error)
- *   5. Shot type repetition ≤3x (warning)
- *   6. Prompt completeness (warning)
- *   7. Adjacent shot transition defined (warning)
- *   8. Character state carryover (warning)
- *   9. Same-scene light delta ≤±3° (warning)
- *  10. Scene switch has transition (warning)
- *  11. Character key features consistent (error)
- *  12. Same-scene spatial continuity (warning)
- *  13. Emotional continuity (warning)
- *  14. Rhythm pacing check (warning)
- *  15. Version format validity (warning)
- *  16. Referential integrity — all refs resolve (error)
- *  17. Micro-detail completeness (warning)
- *  18. FACS injection for dialogue shots (warning)
- *  19. Cross-audit marker presence (info)
  */
 
 const fs = require("fs");
@@ -32,6 +11,101 @@ const fs = require("fs");
 function load(file) {
   return JSON.parse(fs.readFileSync(file, "utf-8"));
 }
+
+// ── Anatomy extraction from v5 prompt format ──────────────
+// Parses "CHAR_XX: HAIR #1a1a1a ... SKIN #f5f0e8 ... EYES iris#4a2810 ..." etc.
+
+function extractAnatomy(prompt, charId) {
+  if (!prompt || !charId) return null;
+
+  // Find the CHAR block for this character
+  const escaped = charId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const charBlockRe = new RegExp(`${escaped}:\\s*(.+?)(?=\\n|CHAR_|SYNTHESIZED|FACS:|$)`, 's');
+  const charMatch = prompt.match(charBlockRe);
+
+  // If no structured CHAR block found, this character may not be in this shot's prompt
+  const block = charMatch ? charMatch[1] : null;
+  if (!block) return null;
+
+  const anatomy = {};
+
+  // Extract hair color
+  const hairRe = /HAIR\s+#([0-9a-fA-F]{6})/;
+  const hairMatch = (block || prompt).match(hairRe);
+  if (hairMatch) anatomy.hairColor = hairMatch[1].toLowerCase();
+
+  // Extract skin tone
+  const skinRe = /SKIN\s+#([0-9a-fA-F]{6})/;
+  const skinMatch = (block || prompt).match(skinRe);
+  if (skinMatch) anatomy.skinTone = skinMatch[1].toLowerCase();
+
+  // Extract eye iris color
+  const irisRe = /iris#([0-9a-fA-F]{6})/i;
+  const irisMatch = (block || prompt).match(irisRe);
+  if (irisMatch) anatomy.irisColor = irisMatch[1].toLowerCase();
+
+  // Extract nail polish color
+  const nailRe = /nail\d+mm\s+#([0-9a-fA-F]{6})/i;
+  const nailMatch = (block || prompt).match(nailRe);
+  if (nailMatch) anatomy.nailPolish = nailMatch[1].toLowerCase();
+
+  // Extract hair length
+  const hairLenRe = /HAIR\s+#[0-9a-fA-F]{6}\s+(\d+)cm/;
+  const hairLenMatch = (block || prompt).match(hairLenRe);
+  if (hairLenMatch) anatomy.hairLength = parseInt(hairLenMatch[1]);
+
+  return Object.keys(anatomy).length > 0 ? anatomy : null;
+}
+
+// ── Helpers ─────────────────────────────────────────────
+
+function hasRoleRef(prompt, charIds) {
+  if (charIds.length === 0) return true;
+  return charIds.some(cid => prompt.includes(cid));
+}
+
+function hasLighting(prompt) {
+  return /light|lighting|shadow|warm|cool|amber|golden|sun|dusk|dawn|dark|dim|bright|soft|backlight|glow|kelvin|key.*fill|diffusion/i.test(prompt);
+}
+
+function hasMovement(prompt) {
+  return /push|pull|pan|track|zoom|crane|dolly|tilt|whip|handheld|static|steady/i.test(prompt);
+}
+
+function hasQuality(prompt) {
+  return /8k|4k|photorealistic|cinematic|film|highly detailed|anime style|ink wash/i.test(prompt);
+}
+
+const MOTION_TRANSITIONS = new Set([
+  "切", "Cut", "cut",
+  "匹配剪辑", "MatchCut",
+  "动作衔接", "ActionBridge",
+  "跟随转场", "Follow",
+  "L-Cut", "J-Cut",
+  "Fade", "淡入淡出",
+]);
+
+function hasPositionGap(posA, posB) {
+  const positions = ["窗边", "门口", "吧台", "角落", "街边", "桌旁", "柜台", "门内", "门外", "室外", "室内"];
+  const aParts = positions.filter(p => posA.includes(p));
+  const bParts = positions.filter(p => posB.includes(p));
+  if (aParts.length > 0 && bParts.length > 0 && aParts[0] !== bParts[0]) {
+    return true;
+  }
+  return false;
+}
+
+function isEmotionJump(prev, curr) {
+  const positive = /喜悦|开心|温暖|释然|放松|微笑|期待|甜蜜|幸福/;
+  const negative = /悲伤|愤怒|恐惧|焦虑|绝望|痛苦|哭泣|崩溃/;
+  const prevIsPos = positive.test(prev);
+  const prevIsNeg = negative.test(prev);
+  const currIsPos = positive.test(curr);
+  const currIsNeg = negative.test(curr);
+  return (prevIsPos && currIsNeg) || (prevIsNeg && currIsPos);
+}
+
+// ── Main check ──────────────────────────────────────────
 
 function check(shots, project) {
   const chars = new Map();
@@ -44,14 +118,14 @@ function check(shots, project) {
   const stats = { total: shots.length, passed: 0, warnings: 0, errors: 0 };
 
   const seenIds = new Set();
-  const charFeatureSnapshots = new Map(); // charId -> {features, shotId} for rule 11
+  const charFeatureSnapshots = new Map(); // charId -> {features, firstShot}
+  const charAnatomySnapshots = new Map(); // charId -> {anatomy, shotId}
 
   for (let i = 0; i < shots.length; i++) {
     const s = shots[i];
     const prev = shots[i - 1];
     const shotIssues = [];
 
-    // Resolve shot characters: support string[], object[], and {id} formats
     const resolveCharObj = (c) => typeof c === "string" ? { id: c } : c;
     const shotChars = (s.characters || []).map(resolveCharObj);
     const shotCharIds = shotChars.map(c => c.id);
@@ -82,7 +156,7 @@ function check(shots, project) {
     }
 
     // ── 5. Shot type repetition check ──────────────────────
-    const st = s.shotType || (s.shotType === undefined ? undefined : s.shotType);
+    const st = s.shotType;
     if (prev && st && prev.shotType === st && i > 1) {
       const prev2 = shots[i - 2];
       if (prev2 && prev2.shotType === st) {
@@ -109,12 +183,10 @@ function check(shots, project) {
         shotIssues.push({ severity: "warning", rule: "transition_missing", msg: "No transition from previous shot defined" });
       }
     } else if (i > 0 && !s.transition) {
-      // Check if shot format supports transitions (context-table format does)
-      // For simple format shots, only warn if scene changed
       if (sceneId && prev && (prev.sceneId || (prev.scene && prev.scene.id)) !== sceneId) {
         const prevScene = prev.sceneId || (prev.scene && prev.scene.id);
         if (prevScene && prevScene !== sceneId) {
-          shotIssues.push({ severity: "warning", rule: "transition_missing", msg: `Scene switch without transition definition` });
+          shotIssues.push({ severity: "warning", rule: "transition_missing", msg: "Scene switch without transition definition" });
         }
       }
     }
@@ -147,24 +219,81 @@ function check(shots, project) {
       }
     }
 
-    // ── 11. Character key features consistency ──────────────
+    // ── 11. Character key feature consistency ──────────────
+    // REAL implementation: compares anatomy across shots for same character
     for (const sc of shotChars) {
       if (sc.id === "—" || sc.id === "未出场") continue;
       const projChar = chars.get(sc.id);
+      if (!projChar) continue;
+
+      // 11a: Check project keyFeatures are not contradicted by prompt
+      if (s.prompt && projChar.keyFeatures) {
+        const features = projChar.keyFeatures.split(/[,，、]/).map(f => f.trim()).filter(Boolean);
+        for (const f of features) {
+          // Check if prompt describes something that would remove/hide the key feature
+          const negations = {
+            "泪痣": [/no\s+mole/i, /no\s+beauty\s+mark/i, /covered\s+mole/i, /mole\s+removed/i],
+            "项链": [/no\s+necklace/i, /bare\s+neck/i, /necklace\s+removed/i],
+            "眼镜": [/no\s+glasses/i, /removed\s+glasses/i, /without\s+glasses/i],
+            "腕表": [/no\s+watch/i, /bare\s+wrist/i, /watch\s+removed/i],
+            "疤痕": [/no\s+scar/i, /scar\s+removed/i, /hidden\s+scar/i],
+          };
+
+          for (const [feat, patterns] of Object.entries(negations)) {
+            if (f.includes(feat)) {
+              for (const pat of patterns) {
+                if (pat.test(s.prompt)) {
+                  shotIssues.push({
+                    severity: "error",
+                    rule: "feature_consistency",
+                    msg: `${sc.id}: key feature "${f}" contradicted in prompt`
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 11b: Cross-shot anatomy consistency (v5 format)
+      if (s.prompt) {
+        const anatomy = extractAnatomy(s.prompt, sc.id);
+        if (anatomy) {
+          if (charAnatomySnapshots.has(sc.id)) {
+            const prevA = charAnatomySnapshots.get(sc.id);
+            const diffs = [];
+            if (anatomy.hairColor && prevA.anatomy.hairColor && anatomy.hairColor !== prevA.anatomy.hairColor) {
+              diffs.push(`hairColor: #${prevA.anatomy.hairColor}→#${anatomy.hairColor}`);
+            }
+            if (anatomy.skinTone && prevA.anatomy.skinTone && anatomy.skinTone !== prevA.anatomy.skinTone) {
+              diffs.push(`skinTone: #${prevA.anatomy.skinTone}→#${anatomy.skinTone}`);
+            }
+            if (anatomy.irisColor && prevA.anatomy.irisColor && anatomy.irisColor !== prevA.anatomy.irisColor) {
+              diffs.push(`irisColor: #${prevA.anatomy.irisColor}→#${anatomy.irisColor}`);
+            }
+            if (anatomy.nailPolish && prevA.anatomy.nailPolish && anatomy.nailPolish !== prevA.anatomy.nailPolish) {
+              diffs.push(`nailPolish: #${prevA.anatomy.nailPolish}→#${anatomy.nailPolish}`);
+            }
+            if (anatomy.hairLength && prevA.anatomy.hairLength && Math.abs(anatomy.hairLength - prevA.anatomy.hairLength) > 5) {
+              diffs.push(`hairLength: ${prevA.anatomy.hairLength}cm→${anatomy.hairLength}cm`);
+            }
+            if (diffs.length > 0) {
+              shotIssues.push({
+                severity: "error",
+                rule: "feature_consistency",
+                msg: `${sc.id}: anatomy changed from ${prevA.shotId}: ${diffs.join("; ")}`
+              });
+            }
+          } else {
+            charAnatomySnapshots.set(sc.id, { anatomy, shotId: s.id });
+          }
+        }
+      }
+
+      // Store initial keyFeatures snapshot
       if (projChar && projChar.keyFeatures) {
         if (!charFeatureSnapshots.has(sc.id)) {
           charFeatureSnapshots.set(sc.id, { features: projChar.keyFeatures, firstShot: s.id });
-        }
-        // Check prompt doesn't contradict key features
-        if (s.prompt && projChar.keyFeatures) {
-          const features = projChar.keyFeatures.split(/[,，、]/);
-          for (const f of features) {
-            const trimmed = f.trim();
-            if (trimmed && s.prompt.length > 0) {
-              // Only flag if we detect a contradiction (e.g., prompt describes something that would hide/change the feature)
-              // This is a heuristic check
-            }
-          }
         }
       }
     }
@@ -176,18 +305,11 @@ function check(shots, project) {
         if (sc.id === "—" || sc.id === "未出场") continue;
         const pc = prevChars.find((c) => c.id === sc.id);
         if (pc && pc.position && sc.position) {
-          // If positions changed drastically without transition, flag it
           const prevPos = pc.position;
           const curPos = sc.position;
           if (prevPos !== curPos && prevPos !== "未出场" && curPos !== "未出场" && prevPos !== "—" && curPos !== "—") {
-            // Check if position change is reasonable (same scene, character moved)
-            // Only flag if there's no transition AND position jump is large
             if (!s.transition || !s.transition.type || s.transition.type === "—") {
-              const hasActionTransition = s.transition && (
-                s.transition.type === "动作衔接" || s.transition.type === "匹配剪辑" ||
-                s.transition.type === "跟随转场" || s.transition.type === "Cut" ||
-                s.transition.type === "切"
-              );
+              const hasActionTransition = s.transition && MOTION_TRANSITIONS.has(s.transition.type);
               if (!hasActionTransition && hasPositionGap(prevPos, curPos)) {
                 shotIssues.push({ severity: "warning", rule: "spatial_continuity", msg: `${sc.id}: large position change (${prevPos} → ${curPos}) without motion transition` });
               }
@@ -204,7 +326,8 @@ function check(shots, project) {
         if (sc.id === "—" || sc.id === "未出场") continue;
         const pc = prevChars.find((c) => c.id === sc.id);
         if (pc && pc.emotion && sc.emotion) {
-          if (isEmotionJump(pc.emotion, sc.emotion) && s.transition && (!s.transition.type || s.transition.type === "切" || s.transition.type === "Cut")) {
+          const hasCushion = s.transition && s.transition.type && s.transition.type !== "切" && s.transition.type !== "Cut" && s.transition.type !== "—";
+          if (isEmotionJump(pc.emotion, sc.emotion) && !hasCushion) {
             shotIssues.push({ severity: "warning", rule: "emotion_jump", msg: `${sc.id}: abrupt emotion change (${pc.emotion} → ${sc.emotion}) with no transition cushion` });
           }
         }
@@ -228,7 +351,6 @@ function check(shots, project) {
     }
 
     // ── 16. Referential integrity ───────────────────────────
-    // Check all references in prompt resolve to known characters/scenes
     if (s.prompt) {
       const refs = s.prompt.match(/CHAR_\d+|SCENE_\d+/g) || [];
       for (const ref of refs) {
@@ -242,39 +364,32 @@ function check(shots, project) {
     }
 
     // ── 17. Micro-detail completeness ──────────────────────
-    // Checks that prompt goes beyond label-level descriptions
     if (s.prompt) {
       const detailGaps = [];
 
-      // Lighting: must have Kelvin/angle/diffusion/ratio beyond just "warm light"
       const hasLightingPhysics = /kelvin|\d{3,4}K|azimuth|elevation|diffusion|key.?fill|shadow.*hardness|falloff|practical|T\d+\.?\d*/i.test(s.prompt);
       const hasLabelLighting = /warm light|soft light|amber glow|golden light|dim light|bright light|natural light/i.test(s.prompt);
       if (hasLabelLighting && !hasLightingPhysics) {
         detailGaps.push("lighting: label-level only (use specific Kelvin/angle/diffusion/ratio)");
       }
 
-      // Camera: must have body/lens/T-stop/ISO beyond just "85mm lens"
       const hasCameraPhysics = /T\d+\.?\d*|ISO\s*\d+|shutter|sensor|super.?35|full.?frame|ARRI|RED\s|SONY|Canon\sC|Blackmagic|focal/i.test(s.prompt);
       const hasBasicCamera = /\d+mm/.test(s.prompt);
       if (hasBasicCamera && !hasCameraPhysics) {
         detailGaps.push("camera: basic lens only (add body/sensor/T-stop/ISO/shutter)");
       }
 
-      // Character anatomy: must describe beyond CHAR_XX ID
       const hasCharAnatomy = /hair.*#|hair.*hex|skin.*#|skin.*tone|iris.*#|nail.*mm|clothing.*fabric|SSS/i.test(s.prompt);
       const hasCharRefs = /CHAR_\d+/.test(s.prompt);
       if (hasCharRefs && !hasCharAnatomy) {
         detailGaps.push("character: ID-only references (expand to hair/skin/eyes/hands/clothing anatomy)");
       }
 
-      // Atmosphere: must specify particle type + density
       const hasAtmosphere = /particle|dust.*density|fog.*dens|steam.*dens|smoke.*dens|convection|volumetric|ambient.?occlusion/i.test(s.prompt);
-      const isInterior = /interior|indoors|inside/i.test(s.prompt);
-      if (!hasAtmosphere && isInterior) {
+      if (!hasAtmosphere) {
         detailGaps.push("atmosphere: missing particle type+density (even 'none' must be stated)");
       }
 
-      // Color science: must have LUT or specific color parameters
       const hasColorScience = /LUT|Kodak|ARRI.*LogC|Fuji|ACES|Rec.?709|grain.*\d+%|saturation.*[RGBCMYK]|contrast.*\d+:|warm.*\d+%.*cool/i.test(s.prompt);
       if (!hasColorScience) {
         detailGaps.push("color: missing LUT/grain%/contrast ratio/warm-cool balance specification");
@@ -303,11 +418,32 @@ function check(shots, project) {
 
     // ── 19. Cross-audit marker ─────────────────────────────
     if (s.prompt && !/AUDIT:|交叉审计|audit.*pass|cross.?audit/i.test(s.prompt)) {
-      // INFO only — doesn't fail, but suggests running through cross-audit
       const dims = (s.prompt.match(/LIGHTING|CAMERA|CHAR_|FACS|ACTION|ATMOSPHERE|COLOR|MATERIAL|AUDIO|POST/g) || []);
       const uniqueDims = new Set(dims);
       if (uniqueDims.size >= 3) {
-        shotIssues.push({ severity: "info", rule: "cross_audit_missing", msg: "Micro-detail prompt has " + uniqueDims.size + "/10 dimensions but no cross-audit marker (run through cross-audit.md)" });
+        shotIssues.push({ severity: "info", rule: "cross_audit_missing", msg: "Micro-detail prompt has " + uniqueDims.size + "/10 dimensions but no cross-audit marker" });
+      }
+    }
+
+    // ── 20. Full dimension count check ─────────────────────
+    if (s.prompt) {
+      const dimSet = new Set();
+      if (/LIGHTING:/.test(s.prompt)) dimSet.add("D1");
+      if (/CAMERA:/.test(s.prompt)) dimSet.add("D2");
+      if (/CHAR_/.test(s.prompt)) dimSet.add("D3");
+      if (/FACS:/.test(s.prompt)) dimSet.add("D4");
+      if (/ACTION:/.test(s.prompt)) dimSet.add("D5");
+      if (/ATMOSPHERE:/.test(s.prompt)) dimSet.add("D6");
+      if (/COLOR:/.test(s.prompt)) dimSet.add("D7");
+      if (/MATERIAL:/.test(s.prompt)) dimSet.add("D8");
+      if (/AUDIO:/.test(s.prompt)) dimSet.add("D9");
+      if (/POST:/.test(s.prompt)) dimSet.add("D10");
+      if (dimSet.size > 0 && dimSet.size < 10) {
+        shotIssues.push({
+          severity: "warning",
+          rule: "dimension_count",
+          msg: `Only ${dimSet.size}/10 dimensions present (missing: ${["D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"].filter(d => !dimSet.has(d)).join(",")})`
+        });
       }
     }
 
@@ -327,50 +463,6 @@ function check(shots, project) {
   return { stats, issues };
 }
 
-// ── Helpers ─────────────────────────────────────────────
-
-function hasRoleRef(prompt, charIds) {
-  if (charIds.length === 0) return true; // no characters needed
-  return charIds.some(cid => prompt.includes(cid));
-}
-
-function hasLighting(prompt) {
-  return /light|lighting|shadow|warm|cool|amber|golden|sun|dusk|dawn|dark|dim|bright|soft|backlight|glow/i.test(prompt);
-}
-
-function hasMovement(prompt) {
-  return /push|pull|pan|track|zoom|crane|dolly|tilt|whip|handheld|static|steady/i.test(prompt);
-}
-
-function hasQuality(prompt) {
-  return /8k|4k|photorealistic|cinematic|film|highly detailed|anime style|ink wash/i.test(prompt);
-}
-
-function hasPositionGap(posA, posB) {
-  // Heuristic: if the semantic distance between positions is large
-  const positions = ["窗边", "门口", "吧台", "角落", "街边", "桌旁", "柜台", "门内", "门外", "室外", "室内"];
-  const aParts = positions.filter(p => posA.includes(p));
-  const bParts = positions.filter(p => posB.includes(p));
-  if (aParts.length > 0 && bParts.length > 0 && aParts[0] !== bParts[0]) {
-    // Same-scene position changes between distinct locations
-    return true;
-  }
-  return false;
-}
-
-function isEmotionJump(prev, curr) {
-  const positive = /喜悦|开心|温暖|释然|放松|微笑|期待|甜蜜|幸福/;
-  const negative = /悲伤|愤怒|恐惧|焦虑|绝望|痛苦|哭泣|崩溃/;
-
-  const prevIsPos = positive.test(prev);
-  const prevIsNeg = negative.test(prev);
-  const currIsPos = positive.test(curr);
-  const currIsNeg = negative.test(curr);
-
-  // Jump from positive to negative or vice versa without transition
-  return (prevIsPos && currIsNeg) || (prevIsNeg && currIsPos);
-}
-
 // ── CLI ──────────────────────────────────────────────────
 
 function main() {
@@ -378,9 +470,9 @@ function main() {
   if (args.length < 1) {
     console.log("Usage: node check-shots.js <shots.json> [--project project.json] [--json] [--verbose]");
     console.log("shots.json: [{id,sceneId,characters,duration,shotType,prompt,...}]");
-    console.log("project.json: {characters:[{id,name,keyFeatures,...}], scenes:[{id,name,...}]}");
+    console.log("project.json: {characters:[{id,name,keyFeatures,anatomy,...}], scenes:[{id,name,...}]}");
     console.log("--json      Output results as JSON");
-    console.log("--verbose   Show passed shots in addition to issues");
+    console.log("--verbose   Show passed shots and rule descriptions");
     process.exit(1);
   }
 
@@ -396,7 +488,7 @@ function main() {
   const jsonOut = args.includes("--json");
   const verbose = args.includes("--verbose");
 
-  const result = check(shots, project, { jsonOut, verbose });
+  const result = check(shots, project);
 
   if (jsonOut) {
     console.log(JSON.stringify(result, null, 2));
@@ -407,7 +499,8 @@ function main() {
     console.log(`  ✅ 通过: ${result.stats.passed}`);
     console.log(`  ⚠ 警告: ${result.stats.warnings}`);
     console.log(`  ❌ 错误: ${result.stats.errors}`);
-    console.log(`  通过率: ${Math.round(result.stats.passed / result.stats.total * 100)}%\n`);
+    const passRate = result.stats.total > 0 ? Math.round(result.stats.passed / result.stats.total * 100) : 0;
+    console.log(`  通过率: ${passRate}%\n`);
 
     if (result.issues.length > 0) {
       console.log(`  详情:`);
@@ -419,26 +512,27 @@ function main() {
     }
 
     if (verbose) {
-      console.log(`  规则说明 (19条):`);
-      console.log(`  1. unique_id          — 镜头ID唯一性`);
-      console.log(`  2. unknown_char       — 角色引用有效性`);
-      console.log(`  3. unknown_scene      — 场景引用有效性`);
-      console.log(`  4. duration           — 时长合理性`);
-      console.log(`  5. shot_type_repeat   — 景别连续重复≤3`);
-      console.log(`  6. prompt_completeness— 提示词要素完整性`);
-      console.log(`  7. transition_missing — 相邻镜头过渡定义`);
-      console.log(`  8. char_continuity    — 人物状态承接`);
-      console.log(`  9. light_jump         — 同场景光线渐变≤±3°`);
-      console.log(`  10. scene_switch_transition — 场景切换过渡说明`);
-      console.log(`  11. feature_consistency — 角色关键特征一致性`);
-      console.log(`  12. spatial_continuity — 同场景空间连续性`);
-      console.log(`  13. emotion_jump      — 情绪连续性`);
-      console.log(`  14. rhythm_pacing     — 节奏合理性`);
-      console.log(`  15. version_format    — 版本号格式`);
-      console.log(`  16. dangling_ref      — 引用完整性`);
-      console.log(`  17. detail_completeness — 微细节完整性(非标签级)`);
-      console.log(`  18. facs_injection    — 对话镜头FACS AU向量注入`);
-      console.log(`  19. cross_audit_missing — 微细节prompt缺少交叉审计标记`);
+      console.log(`  规则说明 (20条):`);
+      console.log(`   1. unique_id              — 镜头ID唯一性`);
+      console.log(`   2. unknown_char           — 角色引用有效性`);
+      console.log(`   3. unknown_scene          — 场景引用有效性`);
+      console.log(`   4. duration               — 时长合理性`);
+      console.log(`   5. shot_type_repeat       — 景别连续重复≤3`);
+      console.log(`   6. prompt_completeness    — 提示词要素完整性`);
+      console.log(`   7. transition_missing     — 相邻镜头过渡定义`);
+      console.log(`   8. char_continuity        — 人物状态承接`);
+      console.log(`   9. light_jump             — 同场景光线渐变≤±3°`);
+      console.log(`  10. scene_switch_transition— 场景切换过渡说明`);
+      console.log(`  11. feature_consistency    — 角色关键特征+解剖一致性(跨镜对比)`);
+      console.log(`  12. spatial_continuity     — 同场景空间连续性`);
+      console.log(`  13. emotion_jump           — 情绪连续性`);
+      console.log(`  14. rhythm_pacing          — 节奏合理性`);
+      console.log(`  15. version_format         — 版本号格式`);
+      console.log(`  16. dangling_ref           — 引用完整性`);
+      console.log(`  17. detail_completeness    — 微细节完整性(非标签级)`);
+      console.log(`  18. facs_injection         — 对话镜头FACS AU向量注入`);
+      console.log(`  19. cross_audit_missing    — 微细节prompt缺少交叉审计标记`);
+      console.log(`  20. dimension_count        — 10维度完整覆盖检查`);
     }
   }
 

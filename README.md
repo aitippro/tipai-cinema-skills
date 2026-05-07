@@ -144,7 +144,7 @@ node validator/check-shots.js examples/context-table.json --project examples/pro
   通过率: 75%
 ```
 
-### 16 条规则
+### 20 条规则
 
 | # | 规则 | 类型 |
 |---|------|------|
@@ -158,12 +158,16 @@ node validator/check-shots.js examples/context-table.json --project examples/pro
 | 8 | 人物状态承接 | 警告 |
 | 9 | 同场景光线渐变 ≤±3° | 警告 |
 | 10 | 场景切换过渡说明 | 警告 |
-| 11 | 角色关键特征一致性 | 错误 |
+| 11 | 角色关键特征+解剖一致性 (跨镜对比) | 错误 |
 | 12 | 同场景空间连续性 | 警告 |
 | 13 | 情绪转折合理性 | 警告 |
 | 14 | 节奏（紧张场景时长） | 警告 |
 | 15 | 版本号格式 (semver) | 警告 |
 | 16 | 引用完整性 (dangling ref) | 错误 |
+| 17 | 微细节完整性 (非标签级) | 警告 |
+| 18 | 对话镜头 FACS AU 向量注入 | 警告 |
+| 19 | 交叉审计标记 | 信息 |
+| 20 | 10维度完整覆盖检查 | 警告 |
 
 ---
 
