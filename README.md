@@ -17,60 +17,35 @@
 
 ---
 
-## 🧠 架构
+## 🧠 架构 (v5 — 自包含)
 
 ```
-  skills/ai-video-studio.md  ──→  Agent 加载 Skill 指令
+  用户贴剧本 + 说 "开始创作"
          │
          ▼
-  skills/micro-detail-injection.md  ──→  10维度物理级参数注入
+  skills/ai-video-studio.md  ← 🎯 单文件自包含 (加载这一个就够了)
          │
-         ▼
-  Agent 生成镜头提示词 (自带 AI)
-         │
-         ▼
-  skills/cross-audit.md  ──→  5层交叉审计 (自一致性→完整性→物理→引用→可合成)
-         │
-         ▼
-  ✅ 审计通过 → 交付用户 / ❌ 自动修复 → 重新审计
-         │
-         ▼
-  validator/check-shots.js  ──→  19 条规则真实校验
+         ├── Step 1-2: 剧本分析 + 角色锁定 (内联全模板)
+         ├── Step 3:   镜头拆解 (内联景别/运镜/过渡表)
+         ├── Step 4:   逐镜生成 (内联10维度参数网格)
+         ├── Step 5:   表情注入 (内联25+AU + 生理模型)
+         └── Step 6:   交叉审计 (内联5层审计 + 19条质检)
+               │
+               ▼
+         ✅ 审计通过 → 交付用户 / ❌ 自动修复 → 重审
+               │
+               ▼
+         validator/check-shots.js  (代码层额外校验)
 ```
 
-**Skill** = 给 Agent 看的指令，告诉它怎么拆剧本、锁角色、设计过渡  
-**Validator** = 真实运行的代码，检查生成结果是否一致
-
-### 🔗 Skill 协作关系
-
-```
-用户贴剧本
-  │
-  ▼
-ai-video-studio.md  ← 🎯 主入口，串联全流程
-  │
-  ├── Step 1-2: 剧本分析 + 角色锁定
-  │     └── 引用 prompt-lifecycle.md 的 Character/Scene schema
-  │
-  ├── Step 3: 上下文表 + 过渡设计
-  │     └── 自建连续性表，7种过渡类型
-  │
-  ├── Step 4: 镜头拆解
-  │     └── 调用 director-storyboard.md 的拆解规则和景别/运镜表
-  │
-  ├── Step 5: 表情注入
-  │     └── 调用 tpema-expression.md 的标点→AU映射 + 视线状态机
-  │
-  └── Step 6: 质检
-        ├── Skill 层: 上下文表交叉对比
-        └── 代码层: validator/check-shots.js ← 19条规则真实校验
-              │
-              └── 最终提示词通过 multimodal-prompt.md 输出 (4变体/3角度/3格式)
-```
+**v5 核心原则**: AI 加载一个文件就拥有全部运行所需数据，不再依赖外部引用。  
+**Skill** = 给 AI 看的运行指令，每步有强制检查点，禁止跳步省略  
+**Validator** = 真实运行的代码，检查生成结果是否一致  
+**📚 参考手册** = 子 Skill 文件保留供深度查询，但 AI 运行时不需要加载
 
 ---
 
-## 🔬 极致细节模式 (v4 新增)
+## 🔬 极致细节模式 (v5 默认启用)
 
 激活: 用户说"极致"、"extreme detail"、"10维" 或加载 micro-detail-injection.md 后自动启用。
 
@@ -117,25 +92,35 @@ ai-video-studio.md  ← 🎯 主入口，串联全流程
 
 ---
 
-## 🎯 核心 Skill
+## 🎯 核心 Skill (v5 自包含)
 
-📂 **[ai-video-studio.md](skills/ai-video-studio.md)** — 加载这一个就够了
+📂 **[ai-video-studio.md](skills/ai-video-studio.md)** — **只加载这一个就够了**
 
 ```
-剧本分析 → 角色锁定 → 上下文表 → 逐镜生成 → 过渡设计 → 连续性校验
+剧本分析 → 角色锁定 → 镜头拆解 → 逐镜10维生成 → FACS表情注入 → 5层交叉审计
 ```
 
-### 内置能力
+### v5 新增特性
+
+| 特性 | 说明 |
+|------|------|
+| 🔒 用户控制进入/退出 | AI 不会自动激活，用户说 "开始创作" 才进入，说 "结束创作" 才退出 |
+| 📋 6个强制检查点 | 每步结束输出 [CHECKPOINT_N]，用户确认后才进入下一步 |
+| 🚫 反偷懒铁律 | 禁止省略/跳步/空值/部分完成，违规则执行失败 |
+| 📦 全内联自包含 | 10维度参数/AU表/审计规则全部写入主文件，不依赖外部引用 |
+| 🔄 跨回合状态追踪 | 每回合输出当前进度状态块，AI 不会忘记做到哪一步 |
+
+### 内置能力 (全部内联，无需加载其他文件)
 
 | 模块 | 说明 |
 |------|------|
-| 🔍 剧本分析 | 提取角色(外貌/性格/关键特征)、场景(光线/色调/时间) |
-| 🔒 角色锁定 | 恒定特征(≥3项)跨镜头不变，用 `[CHAR_XX]` 引用 |
-| 📋 上下文表 | 跨镜状态跟踪：位置→情绪→光线→时间线 |
-| ✂️ 镜头拆解 | 景别 5 级 + 运镜 7 种 + 对话切分规则 |
-| 🎞️ 过渡设计 | 7 种过渡类型：切/匹配剪辑/动作衔接/L-Cut/跟随转场... |
-| 😊 表情注入 | 标点→FACS AU + 语速 + 视线状态机 |
-| ✅ 一致性校验 | 10 条规则自动检查 |
+| 🔍 剧本分析 | 提取角色(外貌/性格/特征)、场景(光线/色调/时间)、情感曲线 |
+| 🔒 角色锁定 | 恒定特征(≥3项)跨镜头不变 + 微细节解剖档案(hair/skin/eyes/hands/clothing) |
+| 📋 上下文表 | 跨镜状态跟踪：位置→情绪→光线→时间线→过渡承接 |
+| ✂️ 镜头拆解 | 景别 5 级 + 运镜 7 种 + 过渡 7 种 + 5条拆解铁律 |
+| 🔬 10维度生成 | D1灯光 D2摄影机 D3角色 D4表情 D5动作 D6大气 D7色彩 D8材质 D9音频 D10后期 |
+| 😊 表情注入 | 标点→25+AU映射 + 情绪混合公式 + 生理模型(眨眼/瞳孔/呼吸/头部/视线) |
+| ✅ 5层交叉审计 | 自一致性→维度完整→物理合理→引用完整→可合成 → ✅交付/❌修复重审 |
 
 ---
 
@@ -251,12 +236,14 @@ node validator/check-shots.js my-shots.json --project my-project.json
 ## 🚀 快速开始
 
 ```bash
-git clone https://github.com/aitippro/tipai-cinema-skills.git
+git clone git@github.com:aitippro/tipai-cinema-skills.git
 ```
 
-1. 将 `skills/ai-video-studio.md` 加载到你的 Agent
-2. Agent 按 Skill 指令处理你的剧本
-3. 用 `node validator/check-shots.js` 检查输出质量
+1. 将 `skills/ai-video-studio.md` 加载到你的 AI Agent
+2. 对 AI 说 **"开始创作"** 然后贴入剧本
+3. AI 会按 6 步工作流执行，每步有 `[CHECKPOINT_N]` 供你确认
+4. 说 **"继续"** 进入下一步，说 **"暂停"** 保存状态，说 **"结束创作"** 退出
+5. 可选：用 `node validator/check-shots.js` 检查输出质量
 
 ---
 
@@ -265,22 +252,22 @@ git clone https://github.com/aitippro/tipai-cinema-skills.git
 ```
 tipai-cinema-skills/
 ├── skills/
-│   ├── ai-video-studio.md          ← 🎯 主 Skill v4 (加载这个)
-│   ├── micro-detail-injection.md   ← 🔬 10维度物理级参数引擎 (NEW)
-│   ├── cross-audit.md              ← 🔍 5层交叉审计引擎 (NEW)
-│   ├── director-storyboard.md      ← ✂️ 分镜引擎
-│   ├── multimodal-prompt.md        ← 🎨 多模态提示词 (含极致模式)
-│   ├── prompt-lifecycle.md         ← 📦 生命周期 & 统一 Schema
-│   └── tpema-expression.md         ← 😊 TPEMA 表情引擎 v2 (25+ AU)
+│   ├── ai-video-studio.md          ← 🎯 主 Skill v5 — 自包含，单文件加载即用
+│   ├── micro-detail-injection.md   ← 📚 参考手册: 10维度参数引擎
+│   ├── cross-audit.md              ← 📚 参考手册: 5层交叉审计
+│   ├── director-storyboard.md      ← 📚 参考手册: 分镜引擎
+│   ├── multimodal-prompt.md        ← 📚 参考手册: 多模态提示词 (含文生图/图生文)
+│   ├── prompt-lifecycle.md         ← 📚 参考手册: 生命周期 & Schema
+│   └── tpema-expression.md         ← 📚 参考手册: TPEMA 表情引擎
 ├── validator/
-│   └── check-shots.js              ← 🛡️ 19 条质检规则
+│   └── check-shots.js              ← 🛡️ 19 条质检规则 (代码层)
 ├── .github/workflows/
 │   └── test.yml                    ← 🤖 CI 自动校验
 ├── examples/
 │   ├── project.json                ← 示例项目 (2角色 2场景)
 │   ├── shots-example.json          ← 标准模式示例镜头
 │   ├── context-table.json          ← 上下文表示例 (含过渡/状态)
-│   └── extreme-shot.json           ← 极致细节单镜头示例 (NEW)
+│   └── extreme-shot.json           ← 极致细节单镜头示例
 └── README.md
 ```
 

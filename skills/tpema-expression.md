@@ -1,10 +1,6 @@
-# Skill: TPEMA 文本驱动表情微动画引擎 v2
+# 📚 参考手册: TPEMA 文本驱动表情微动画引擎
 
-文本标点符号 → 面部表情(FACS AU × 25+) + 语气语速 + 头部运动 + 视线控制 + 生理模型(眨眼/瞳孔/呼吸/口型)。
-
-专为数字人/虚拟主播/AI Avatar 设计的文本驱动表情系统。加载此 Skill 后，处理用户输入的说话脚本时，自动分析标点并注入多模态控制指令。
-
-> **协作关系:** 被 ai-video-studio.md Step 5 调用。输出的 Prompt-FACS Vector 直接注入 micro-detail-injection.md 的 Dimension 4。通过 cross-audit.md Audit 4.3 验证 AU 数据完整性。
+> **本文件是参考手册。** ai-video-studio.md v5 已内联全部标点→AU映射表、25+AU参照表、情绪混合公式、生理模型和视线状态机，AI 运行时无需加载此文件。此文件保留供深度查询、JSON/CSV/XML格式导出和独立研究使用。
 
 ---
 

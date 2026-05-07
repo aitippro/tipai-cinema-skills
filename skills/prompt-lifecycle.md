@@ -1,8 +1,6 @@
-# Skill: 提示词生命周期管理系统 (Prompt LCM)
+# 📚 参考手册: 提示词生命周期管理系统 (Prompt LCM)
 
-为 AI 长视频创作（漫剧/短剧/动画）设计的提示词全生命周期管理系统。解决长线创作中的人物一致性、场景复用、版本管理等核心痛点。
-
-> **本 Skill 定义的数据格式为仓库统一标准。** director-storyboard.md、ai-video-studio.md、multimodal-prompt.md 均引用此处的 Character/Scene/Shot schema。validator/check-shots.js 的检查逻辑基于此 schema 的子集。
+> **本文件是参考手册。** ai-video-studio.md v5 已内联 Character/Scene schema、版本管理和存储结构要点，AI 运行时无需加载此文件。此文件保留供长线项目管理、多项目复用和快照策略参考。
 
 ---
 

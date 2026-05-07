@@ -1,8 +1,6 @@
-# Skill: 极致细节注入引擎 v1.0 (Micro-Detail Injection Engine)
+# 📚 参考手册: 极致细节注入引擎 (Micro-Detail Injection Engine)
 
-AI 视频提示词的物理级精度增强层。加载此 Skill 后，Agent 在生成每个镜头提示词时必须遍历全部 10 个维度，将标签级描述替换为可测量参数。
-
-> **引用链**: 本 Skill 被 ai-video-studio.md Step 2-3 调用。输出须通过 cross-audit.md 的 5 层交叉审计后才能交付用户。
+> **本文件是参考手册。** ai-video-studio.md v5 已内联全部10维度参数表，AI 运行时无需加载此文件。此文件保留供深度查询和独立研究使用。
 
 ---
 

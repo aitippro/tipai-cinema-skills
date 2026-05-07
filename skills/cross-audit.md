@@ -1,8 +1,6 @@
-# Skill: 交叉审计引擎 v1.0 (Cross-Audit Engine)
+# 📚 参考手册: 交叉审计引擎 (Cross-Audit Engine)
 
-提示词生成后、交付用户前的最终质检关卡。5 层独立审计，任一不通过即自动修复→重新审计，全部通过后才放行。
-
-> **引用链**: 被 ai-video-studio.md Step 6 调用。审计标准基于 micro-detail-injection.md 的 10 维度参数网格。
+> **本文件是参考手册。** ai-video-studio.md v5 已内联全部5层审计规则和修复逻辑，AI 运行时无需加载此文件。此文件保留供深度查询和独立研究使用。
 
 ---
 

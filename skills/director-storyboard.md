@@ -1,8 +1,6 @@
-# Skill: AI 导演分镜引擎
+# 📚 参考手册: AI 导演分镜引擎
 
-将剧本/小说拆解为可直接输入 AI 视频生成工具的分镜提示词。适用于动态漫画、AI 短剧、虚拟制片。
-
-> **协作关系:** 本 Skill 被 ai-video-studio.md 引用（主入口 Skill 调用本 Skill 的拆解规则）。角色/场景的数据格式遵循 prompt-lifecycle.md 的统一 schema。生成的镜头提示词最终由 multimodal-prompt.md 输出。
+> **本文件是参考手册。** ai-video-studio.md v5 已内联全部拆解规则、景别/运镜表、过渡类型库和输出模板，AI 运行时无需加载此文件。此文件保留供深度查询和独立使用。
 
 ## 工作流程
 
