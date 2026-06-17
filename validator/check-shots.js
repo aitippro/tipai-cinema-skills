@@ -406,7 +406,7 @@ function check(shots, project) {
 
     // ── 18. FACS injection for dialogue shots ──────────────
     if (s.prompt && /dialogue|speaking|says|said|asks|replies|whispers|murmurs|exclaims|shouts|sighs|conversation/.test(s.prompt)) {
-      const hasFACS = /FACS:|FACIAL:|AU\d+\s*=|AU\d+\s*[:=]\s*\d/i.test(s.prompt);
+      const hasFACS = /FACS(\s*v6)?:|FACIAL:|AU\d+\s*=|AU\d+\s*[:=]\s*\d/i.test(s.prompt);
       if (!hasFACS) {
         shotIssues.push({
           severity: "warning",
@@ -431,7 +431,7 @@ function check(shots, project) {
       if (/LIGHTING:/.test(s.prompt)) dimSet.add("D1");
       if (/CAMERA:/.test(s.prompt)) dimSet.add("D2");
       if (/CHAR_/.test(s.prompt)) dimSet.add("D3");
-      if (/FACS:/.test(s.prompt)) dimSet.add("D4");
+      if (/FACS(\s*v6)?:/i.test(s.prompt)) dimSet.add("D4");
       if (/ACTION:/.test(s.prompt)) dimSet.add("D5");
       if (/ATMOSPHERE:/.test(s.prompt)) dimSet.add("D6");
       if (/COLOR:/.test(s.prompt)) dimSet.add("D7");
@@ -443,6 +443,90 @@ function check(shots, project) {
           severity: "warning",
           rule: "dimension_count",
           msg: `Only ${dimSet.size}/10 dimensions present (missing: ${["D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"].filter(d => !dimSet.has(d)).join(",")})`
+        });
+      }
+    }
+
+    // ── 21. FACS asymmetry check ───────────────────────────
+    if (s.prompt) {
+      const hasAsymmetricAU = /AU\d+=\(\s*L\s*:\s*[\d.]+\s*\/\s*R\s*:\s*[\d.]+/i.test(s.prompt);
+      const hasDialogOrEmotion = /dialogue|speaking|says|said|asks|replies|emotion|表情|情绪|悲伤|愤怒|喜悦|恐惧|厌恶|惊讶|蔑视|contempt|happiness|sadness|anger|fear|disgust|surprise/i.test(s.prompt);
+      const hasFACSSection = /FACS\s*(v6)?:/i.test(s.prompt);
+      if (hasFACSSection && hasDialogOrEmotion && !hasAsymmetricAU) {
+        // Check if the emotion is one that should have asymmetry
+        const contemptMatch = /蔑视|contempt/.test(s.prompt);
+        const skepticismMatch = /怀疑|skepticism|skeptic/.test(s.prompt);
+        if (contemptMatch || skepticismMatch) {
+          shotIssues.push({
+            severity: "warning",
+            rule: "facs_asymmetry",
+            msg: "FACS v6: emotion requiring asymmetry (contempt/skepticism) found but AU values appear symmetric (no L/R split detected)"
+          });
+        }
+      }
+    }
+
+    // ── 22. Expression timing validity ─────────────────────
+    if (s.prompt) {
+      const timingMatch = s.prompt.match(/EXPR_TIMING:\s*onset=(\d+)ms\s+apex=(\d+)ms\s+offset=(\d+)ms/i);
+      if (timingMatch) {
+        const onset = parseInt(timingMatch[1]);
+        const apex = parseInt(timingMatch[2]);
+        const offset = parseInt(timingMatch[3]);
+        // Allow all-zero for baseline/neutral (no expression scenario)
+        if (!(onset === 0 && apex === 0 && offset === 0)) {
+          const issues = [];
+          if (onset < 20 || onset > 600) issues.push(`onset=${onset}ms (valid: 20-600ms)`);
+          if (apex < 0 || apex > 3000) issues.push(`apex=${apex}ms (valid: 0-3000ms)`);
+          if (offset < 30 || offset > 1000) issues.push(`offset=${offset}ms (valid: 30-1000ms)`);
+          if (issues.length > 0) {
+            shotIssues.push({
+              severity: "warning",
+              rule: "expr_timing",
+              msg: `OAO timing out of physiological range: ${issues.join("; ")}`
+            });
+          }
+        }
+      }
+    }
+
+    // ── 23. Micro-expression leakage check ─────────────────
+    if (s.prompt) {
+      const hasSuppression = /suppression[=>\s]+(0\.[3-9]|[1-9])/i.test(s.prompt) || /suppressible|压抑|抑制|克制|强忍|憋/.test(s.prompt);
+      const hasLeakage = /leakage\[\{/i.test(s.prompt) || /MICRO:.*leakage/i.test(s.prompt);
+      const hasHighArousal = /恐惧|愤怒|anger|fear|panic|terrified|enraged/.test(s.prompt);
+      if (hasSuppression && !hasLeakage && hasHighArousal) {
+        shotIssues.push({
+          severity: "info",
+          rule: "micro_leakage",
+          msg: "Emotion suppression scenario detected but no micro-expression leakage data found"
+        });
+      }
+    }
+
+    // ── 24. Gaze detail check ──────────────────────────────
+    if (s.prompt) {
+      const hasGaze = /GAZE:\s*(FOCUS|SCAN|AVOID|EMPHASIS|RECALL|DART|VACANT|PURSUIT)/i.test(s.prompt);
+      const hasSaccParams = /SACC:\s*[\d.]+°\/[\d.]+°\/s/i.test(s.prompt);
+      const isDialogOrCloseup = /dialogue|CU|ECU|close.?up|speaking|对话|近景|特写/i.test(s.prompt);
+      if (isDialogOrCloseup && hasGaze && !hasSaccParams) {
+        shotIssues.push({
+          severity: "warning",
+          rule: "gaze_detail",
+          msg: "Dialog/close-up shot has gaze state but missing saccade parameters (SACC: amplitude°/velocity°/s)"
+        });
+      }
+    }
+
+    // ── 25. ANS coverage check ─────────────────────────────
+    if (s.prompt) {
+      const hasHighArousal = /(恐惧|fear|愤怒|anger|panic|terrified|enraged|horror)(?!.*suppress)/i.test(s.prompt);
+      const hasANS = /ANS:\s*PULSE/i.test(s.prompt) || /PULSE\s*car/i.test(s.prompt);
+      if (hasHighArousal && !hasANS) {
+        shotIssues.push({
+          severity: "info",
+          rule: "ans_coverage",
+          msg: "High-arousal emotion detected but no ANS data (pulse/flush/sweat) — consider adding for realism"
         });
       }
     }
@@ -533,6 +617,11 @@ function main() {
       console.log(`  18. facs_injection         — 对话镜头FACS AU向量注入`);
       console.log(`  19. cross_audit_missing    — 微细节prompt缺少交叉审计标记`);
       console.log(`  20. dimension_count        — 10维度完整覆盖检查`);
+      console.log(`  21. facs_asymmetry         — v6: 不对称AU(L/R)检测(蔑视/怀疑必须不对称)`);
+      console.log(`  22. expr_timing            — v6: OAO时序在生理有效范围(onset 20-600/apex 0-3000/offset 30-1000ms)`);
+      console.log(`  23. micro_leakage          — v6: 情绪压抑场景应包含微表情泄漏数据`);
+      console.log(`  24. gaze_detail            — v6: 对话/特写镜头须含SACC眼跳参数`);
+      console.log(`  25. ans_coverage           — v6: 高arousal情绪应含ANS自主神经效应`);
     }
   }
 

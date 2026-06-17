@@ -1,6 +1,6 @@
-# Skill: AI 视频创作工作室 v5
+# Skill: AI 视频创作工作室 v6
 
-剧本→AI视频。自包含，单文件加载即用。
+剧本→AI视频。v6 微表情增强引擎：不对称AU + OAO时序动力学 + 微表情泄漏 + 扩展眼动 + 共发音 + ANS效应 + 角色表情指纹。自包含，单文件加载即用。
 
 ---
 
@@ -67,11 +67,11 @@
 
 ```
 Step 1: 剧本分析        → 角色表 + 场景表 + 情感曲线 + 视觉风格
-Step 2: 角色锁定        → 角色解剖档案 + 场景锁定 + 上下文表初始化
+Step 2: 角色锁定        → 角色解剖档案 + 表情指纹 + 场景锁定 + 上下文表初始化
 Step 3: 镜头拆解        → 镜头序列表 (含景别/运镜/过渡设计/上下文承接)
 Step 4: 逐镜生成        → 每镜头完整10维数据 + 合成英文prompt
-Step 5: 表情注入        → 每镜头FACS向量 + 生理模型
-Step 6: 交叉审计        → 5层审计 + 19条质检 → ✅交付 / ❌修复→重审
+Step 5: 表情注入 v6     → 不对称FACS + OAO时序 + 微表情泄漏 + 扩展眼动 + 共发音 + ANS
+Step 6: 交叉审计        → 5层审计 + 22条质检 → ✅交付 / ❌修复→重审
 ```
 
 ---
@@ -170,7 +170,46 @@ Step 6: 交叉审计        → 5层审计 + 19条质检 → ✅交付 / ❌修�
   CLOTHING: [cotton/silk/wool/denim/leather/...] weave[0.x] drape[0.x] wear:[描述]
 ```
 
-### 2.3 场景锁定
+### 2.3 角色表情指纹 (v6 新增)
+每个角色必须建立表情指纹档案。**这些值在所有镜头中决定角色表情风格，直接控制 Step 5 的 v6 FACS 注入参数。**
+
+```
+[CHAR_01] 表情指纹:
+  静息张力 (Resting Face Tension):
+    AU1=0.03 AU2=0.01 AU4=0.08 AU7=0.05 AU12=0.03 AU15=0.02 (其余AU=0)
+    这些值在所有非对话镜头中叠加到FACS基线上
+  
+  表情幅度 (Expressivity): [0.0-1.0]
+    0=面瘫/flat affect, 0.3=内向克制, 0.5=正常, 0.7=外向, 1.0=极度夸张
+    所有情绪AU值 = 标准值 × expressivity
+
+  全局不对称偏侧:
+    bias: [L/R/none], magnitude: [0.0-0.12]
+    AU级偏侧: AU12={bias:L/R, mag:0.0x}, AU1={bias:L/R, mag:0.0x}
+
+  眨眼风格:
+    rate: [8-35bpm], type_ratio: {soft:0.x, complete:0.x, double:0.x, long:0.x, flutter:0.x}
+
+  习惯动作 (Habitual Mannerisms):
+    - {trigger: "触发场景", AU: [AU组合及强度], gaze: [状态], head: [头动], dur: [ms]}
+    - {trigger: "思考时", AU: [AU1+2=0.2, AU18=0.15], gaze: RECALL, head: yaw-5°, dur: 800-1200ms}
+
+  情绪抑制特征 (Emotion Suppression Profile):
+    anger:    {suppressibility: low/med/high, leak_AUs: [AU4,AU7], micro_flash: true/false}
+    sadness:  {suppressibility: low/med/high, leak_AUs: [AU1,AU15], eye_leak: true/false}
+    fear:     {suppressibility: low/med/high, leak_AUs: [AU5,AU20], micro_flash: true/false}
+    happiness:{suppressibility: low/med/high, leak_AUs: [AU6], micro_flash: true/false}
+    disgust:  {suppressibility: low/med/high, leak_AUs: [AU9]}
+    contempt: {suppressibility: low/med/high, leak_AUs: [AU12_unilateral]}
+    surprise: {suppressibility: low/med/high, leak_AUs: [AU5]}
+    (suppressibility=抑制能力, leak_AUs=被压抑时哪些AU会微量泄漏, micro_flash=在<100ms内的微表情闪烁, eye_leak=眼睛区域尤其容易泄漏)
+
+  角色原型 (Archetype):
+    type: [内敛克制型/外向奔放型/冷面幽默型/易读透明型/焦虑紧张型/权威掌控型/天真烂漫型/忧郁沉思型]
+    baseline_affect: [warm_resting/neutral_resting/cold_resting/sad_resting]
+```
+
+### 2.4 场景锁定
 ```
 [SCENE_01] 场景名 v1.0
 恒定: [地点] | [建筑特征] | [色彩基调] — 全片不变
@@ -178,7 +217,7 @@ Step 6: 交叉审计        → 5层审计 + 19条质检 → ✅交付 / ❌修�
 光线基准: [kelvin值]K — 所有该场景镜头在此基准±500K内
 ```
 
-### 2.4 上下文表初始化
+### 2.5 上下文表初始化
 创建空上下文表，全片维护：
 
 ```
@@ -193,7 +232,7 @@ Step 6: 交叉审计        → 5层审计 + 19条质检 → ✅交付 / ❌修�
 步骤: Step 2/6 — 角色锁定
 状态: ✅ 完成
 产出:
-  - [N]个角色解剖档案 (含微细节)
+  - [N]个角色解剖档案 (含微细节 + 表情指纹)
   - [M]个场景锁定 (含光线基准)
   - 上下文表已初始化
 下一步: Step 3/6 — 镜头拆解
@@ -357,18 +396,31 @@ CHAR_{id}:
 
 情绪影响: 紧张→skin.oil+0.2, 冷光(>5600K)→sssZones-30%, 湿环境→drape-0.3
 
-### D4: FACS 表情 (详见 Step 5)
+### D4: FACS 表情 v6 (详见 Step 5)
 
-本步骤先注入基线值，Step 5 做完整的对话驱动注入。
+本步骤先注入 v6 基线值（含不对称标记和OAO时序），Step 5 做完整的对话驱动注入。
 
-非对话镜头FACS基线:
+非对话镜头FACS v6基线（叠加角色表情指纹的静息张力值）:
 ```
-FACS: AU1=0.05 AU2=0.02 AU4=0.05 AU5=0.0 AU6=0.0 AU7=0.1 AU9=0.0 AU10=0.0 AU12=0.05 AU14=0.0 AU15=0.05 AU16=0.0 AU17=0.0 AU18=0.0 AU20=0.0 AU22=0.0 AU23=0.0 AU24=0.0 AU25=0.0 AU26=0.0 AU27=0.0 AU43=0.0 AU45=0
-  BLINK: 18bpm | PUPIL: 4.0mm | BREATH: 14cpm chest40%dia60%
-  HEAD: p0° y0° r0° | GAZE: FOCUS
+FACS v6:
+  AU1=0.05(L:0.05/R:0.05) AU2=0.02(L:0.02/R:0.02) AU4=0.05(L:0.05/R:0.05)
+  AU5=0.0(L:0.0/R:0.0) AU6=0.0(L:0.0/R:0.0) AU7=0.1(L:0.1/R:0.1)
+  AU9=0.0 AU10=0.0(L:0.0/R:0.0) AU12=0.05(L:0.05/R:0.05)
+  AU14=0.0(L:0.0/R:0.0) AU15=0.05(L:0.05/R:0.05) AU16=0.0
+  AU17=0.0 AU18=0.0 AU20=0.0(L:0.0/R:0.0) AU22=0.0 AU23=0.0 AU24=0.0
+  AU25=0.0 AU26=0.0 AU27=0.0 AU43=0.0(L:0.0/R:0.0) AU45=0
+  ASYMM_LEVEL: L0_SYMMETRIC
+  EXPR_TIMING: onset=0ms apex=0ms offset=0ms curve=linear
+  GENUINENESS: N/A (neutral baseline)
+  COART: none→neutral (no transition)
+  MICRO: macro[neutral/I0.0] leakage[none] suppression0.0
+  EYES: GAZE:FOCUS SACC:0°/0°/s MICROSACC:2Hz HIPPUS:0.15mm VERGENCE:0° TEAR:0
+  PHYSIO: BLINK:18bpm type:soft PUPIL:4.0mm BREATH:14cpm ch40%dia60%
+  HEAD: pitch0° yaw0° roll0°
+  ANS: PULSE car0.05/tem0.0 SKIN flush[] sweat0 tear0
 ```
 
-对话镜头：先在此注入基线，Step 5 中按标点→AU映射覆盖。
+对话镜头：先在此注入基线，Step 5 中按标点→AU映射覆盖，并补充不对称、OAO时序、泄漏和ANS。
 
 ### D5: 动作微运动
 
@@ -532,74 +584,110 @@ TRANSITION: [{type}] — {connection_point} | LIGHT Δ: {from_K}K→{to_K}K
 
 ---
 
-## Step 5: 表情注入 (FACS Vector Injection)
+## Step 5: 表情注入 v6 (不对称FACS + OAO时序 + 泄漏 + 眼动 + 共发音 + ANS)
 
-对**每个镜头**注入完整的 Prompt-FACS Vector。对话镜头按标点驱动，非对话镜头注入基线。
+对**每个镜头**注入完整的 v6 FACS Vector。对话镜头按标点驱动，非对话镜头注入基线。v6 新增: 不对称AU、OAO时序动力学、微表情泄漏检测、扩展眼动、表情共发音、ANS自主神经效应。
 
-### 5.1 标点→AU映射
+### 5.1 标点→AU映射 (v6增强版，含不对称偏侧)
 
-| 标点 | 关键AU | 强度 | 头部 | 视线 | 语速 |
-|------|--------|------|------|------|------|
-| ， | AU1+2 | 0.30 | pitch+2° | FOCUS | 1.0x |
-| 、 | AU1+2 | 0.25 | — | FOCUS | 1.0x |
-| 。 | AU1+2 | 0.15 | pitch-2° | FOCUS | 0.9x |
-| ？ | AU1+2+5 | 0.75 | pitch+5° yaw+3° | EMPHASIS | 1.1x |
-| ！ | AU20+5+12 | 0.85 | pitch+8° | EMPHASIS | 1.2x |
-| … | AU1+2 | 0.40 | yaw-3° | AVOID | 0.5x |
-| ； | AU1+2+4 | 0.55 | pitch+3° yaw+2° | SCAN | 1.0x |
-| ： | AU1+2 | 0.35 | — | FOCUS | 1.0x |
-| "" | AU1+2+20 | 0.50 | yaw±2° | EMPHASIS | 1.0x |
-| —— | AU1+2+4 | 0.45 | pitch+3° | FOCUS | 1.0x |
+| 标点 | 关键AU (含L/R) | 强度 | OAO时序 | 头部 | 视线 | 语速 |
+|------|---------------|------|---------|------|------|------|
+| ， | AU1+2 (L略强) | 0.30 | onset=150ms apex=100ms offset=200ms gaussian | pitch+2° | FOCUS | 1.0x |
+| 、 | AU1+2 (对称) | 0.25 | onset=120ms apex=80ms offset=150ms linear | — | FOCUS | 1.0x |
+| 。 | AU1+2回落 | 0.15 | onset=250ms apex=100ms offset=300ms logistic | pitch-2° | FOCUS | 0.9x |
+| ？ | AU1+2+5 (对称) | 0.75 | onset=80ms apex=150ms offset=300ms expDecay | pitch+5° yaw+3° | EMPHASIS | 1.1x |
+| ！ | AU20+5+12 (AU12左偏~12%) | 0.85 | onset=60ms apex=200ms offset=400ms gaussian | pitch+8° | EMPHASIS | 1.2x |
+| … | AU1+2 (R略强) | 0.40 | onset=300ms apex=400ms offset=500ms logistic | yaw-3° | AVOID | 0.5x |
+| ； | AU1+2+4 (AU1单侧可能) | 0.55 | onset=180ms apex=200ms offset=350ms gaussian | pitch+3° yaw+2° | SCAN | 1.0x |
+| ： | AU1+2 (对称) | 0.35 | onset=150ms apex=100ms offset=200ms linear | — | FOCUS | 1.0x |
+| "" | AU1+2+20 (微不对称) | 0.50 | onset=120ms apex=180ms offset=300ms gaussian | yaw±2° | EMPHASIS | 1.0x |
+| —— | AU1+2+4 (对称) | 0.45 | onset=200ms apex=150ms offset=300ms gaussian | pitch+3° | FOCUS | 1.0x |
 
-### 5.2 完整25+ AU参照
+### 5.2 完整25+ AU参照 (v6增强 — 含不对称标记)
 
-| AU | 名称 | 范围 | 日常基线 | 触发条件 |
-|----|------|------|---------|---------|
-| AU1 | Inner Brow Raiser | 0-1 | 0.05 | 悲伤/疑问/惊讶 |
-| AU2 | Outer Brow Raiser | 0-1 | 0.02 | 惊讶/恐惧 |
-| AU4 | Brow Lowerer | 0-1 | 0.05 | 愤怒/专注/困惑 |
-| AU5 | Upper Lid Raiser | 0-1 | 0.0 | 恐惧/惊讶 |
-| AU6 | Cheek Raiser | 0-0.8 | 0.0 | Duchenne笑容标记 |
-| AU7 | Lid Tightener | 0-0.6 | 0.1 | 专注/怀疑 |
-| AU9 | Nose Wrinkler | 0-0.7 | 0.0 | 厌恶 |
-| AU10 | Upper Lip Raiser | 0-0.6 | 0.0 | 厌恶/蔑视 |
-| AU12 | Lip Corner Puller | 0-1 | 0.05 | 微笑/喜悦 |
-| AU14 | Dimpler | 0-0.5 | 0.0 | 酒窝/俏皮 |
-| AU15 | Lip Corner Depressor | 0-0.8 | 0.05 | 悲伤/失望 |
-| AU16 | Lower Lip Depressor | 0-0.6 | 0.0 | 悲伤/不屑 |
-| AU17 | Chin Raiser | 0-0.7 | 0.0 | 不确定/委屈 |
-| AU18 | Lip Puckerer | 0-0.5 | 0.0 | 思考/亲吻 |
-| AU20 | Lip Stretcher | 0-0.9 | 0.0 | 恐惧/紧张/假笑 |
-| AU22 | Lip Funneler | 0-0.6 | 0.0 | "O"口型/惊喜 |
-| AU23 | Lip Tightener | 0-0.9 | 0.0 | 愤怒/克制 |
-| AU24 | Lip Pressor | 0-0.8 | 0.0 | 压抑/忍耐 |
-| AU25 | Lips Part | 0-1 | 0.0 | 说话/惊讶 |
-| AU26 | Jaw Drop | 0-1 | 0.0 | 惊讶/大笑 |
-| AU27 | Mouth Stretch | 0-1 | 0.0 | 极度惊讶/尖叫 |
-| AU43 | Eye Closure | 0-1 | 0.0 | 闭眼/用力闭眼 |
-| AU45 | Blink | 0/1 | — | 每4-6秒一次 |
+| AU | 名称 | 范围 | 可不对称 | 日常基线 | 触发条件 |
+|----|------|------|---------|---------|---------|
+| AU1 | Inner Brow Raiser | 0-1 | ✅ L/R | 0.05 | 悲伤/疑问/惊讶/单侧=怀疑 |
+| AU2 | Outer Brow Raiser | 0-1 | ✅ L/R | 0.02 | 惊讶/恐惧/单侧=质疑 |
+| AU4 | Brow Lowerer | 0-1 | ✅ L/R | 0.05 | 愤怒/专注/困惑/单侧=思考 |
+| AU5 | Upper Lid Raiser | 0-1 | ✅ L/R | 0.0 | 恐惧/惊讶 |
+| AU6 | Cheek Raiser | 0-0.8 | ⚠️ 弱L偏 | 0.0 | Duchenne真诚标记(左脸~12%强) |
+| AU7 | Lid Tightener | 0-0.6 | ✅ L/R | 0.1 | 专注/怀疑 |
+| AU9 | Nose Wrinkler | 0-0.7 | ❌ 对称 | 0.0 | 厌恶(几乎总是对称) |
+| AU10 | Upper Lip Raiser | 0-0.6 | ✅ L/R | 0.0 | 厌恶/蔑视/单侧=冷笑 |
+| AU12 | Lip Corner Puller | 0-1 | ✅ L/R | 0.05 | **关键AU**: 单侧=蔑视, 左偏=真诚笑容 |
+| AU14 | Dimpler | 0-0.5 | ✅ L/R | 0.0 | 酒窝/俏皮(常单侧) |
+| AU15 | Lip Corner Depressor | 0-0.8 | ✅ L/R | 0.05 | 悲伤/失望/单侧=苦笑 |
+| AU16 | Lower Lip Depressor | 0-0.6 | ❌ 对称 | 0.0 | 悲伤/不屑 |
+| AU17 | Chin Raiser | 0-0.7 | ❌ 对称 | 0.0 | 不确定/委屈 |
+| AU18 | Lip Puckerer | 0-0.5 | ❌ 对称 | 0.0 | 思考/亲吻 |
+| AU20 | Lip Stretcher | 0-0.9 | ⚠️ 弱 | 0.0 | 恐惧/紧张/假笑 |
+| AU22 | Lip Funneler | 0-0.6 | ❌ 对称 | 0.0 | "O"口型/惊喜 |
+| AU23 | Lip Tightener | 0-0.9 | ❌ 对称 | 0.0 | 愤怒/克制 |
+| AU24 | Lip Pressor | 0-0.8 | ❌ 对称 | 0.0 | 压抑/忍耐 |
+| AU25 | Lips Part | 0-1 | ❌ 对称 | 0.0 | 说话/惊讶 |
+| AU26 | Jaw Drop | 0-1 | ❌ 对称 | 0.0 | 惊讶/大笑 |
+| AU27 | Mouth Stretch | 0-1 | ❌ 对称 | 0.0 | 极度惊讶/尖叫 |
+| AU43 | Eye Closure | 0-1 | ✅ L/R | 0.0 | 闭眼/用力闭眼/单侧=wink |
+| AU45 | Blink | 0/1 | ❌ 对称 | — | 每4-6秒一次 |
 
-### 5.3 情绪混合公式
+### 5.3 情绪混合公式 (v6增强 — 含不对称偏侧 + OAO时序 + 真伪诊断)
+
 ```
-喜悦:   AU6≥0.3 + AU12≥0.3 + AU25≥0.2(laugh) + AU14≥0.1
-悲伤:   AU1≥0.4 + AU4≥0.3 + AU15≥0.4 + AU17≥0.2 + AU43≥0.1
-愤怒:   AU4≥0.6 + AU5≥0.3 + AU7≥0.4 + AU23≥0.5 + AU24≥0.2
-恐惧:   AU1≥0.5 + AU2≥0.5 + AU4≥0.3 + AU5≥0.6 + AU20≥0.3 + AU25≥0.3 + AU26≥0.5
-厌恶:   AU4≥0.3 + AU7≥0.3 + AU9≥0.5 + AU10≥0.3
-惊讶:   AU1≥0.4 + AU2≥0.4 + AU5≥0.5 + AU25≥0.3 + AU26≥0.6
-蔑视:   AU4≥0.2 + AU12单侧≥0.4 + AU10≥0.1
-紧张:   AU1+2=0.3 + AU4=0.3 + AU7=0.4 + AU20=0.2 + AU23=0.2
-释然:   AU6=0.15 + AU12=0.2 + AU43=0.3(慢闭眼)→基线回归
+喜悦(Happiness) 真诚:
+  AU6≥0.3(L:1.12×R) + AU12≥0.3(L:1.08×R) + AU25≥0.2(laugh)
+  OAO: onset=120-180ms apex=200-500ms offset=250-500ms curve=gaussian
+  genuineness: ≥0.85 (杜兴标记)
+
+喜悦(Happiness) 社交假笑:
+  AU12≥0.3(L=R) + AU6<0.15
+  OAO: onset=60-100ms apex=400-800ms offset=100-200ms curve=linear
+  genuineness: ≤0.4
+
+悲伤(Sadness):
+  AU1≥0.4(L略强) + AU4≥0.3 + AU15≥0.4(L略强) + AU17≥0.2 + AU43≥0.1
+  OAO: onset=250-400ms apex=500-2000ms offset=400-700ms curve=logistic
+
+愤怒(Anger):
+  AU4≥0.6(L略强) + AU5≥0.3 + AU7≥0.4 + AU23≥0.5 + AU24≥0.2
+  OAO: onset=50-100ms apex=200-1000ms offset=200-400ms curve=skewR
+
+恐惧(Fear):
+  AU1≥0.5 + AU2≥0.5 + AU4≥0.3 + AU5≥0.6 + AU20≥0.3 + AU25≥0.3 + AU26≥0.5
+  OAO: onset=40-80ms apex=100-300ms offset=200-400ms curve=expDecay
+
+厌恶(Disgust):
+  AU4≥0.3 + AU7≥0.3 + AU9≥0.5 + AU10≥0.3
+  OAO: onset=60-120ms apex=100-300ms offset=150-350ms curve=skewR
+
+惊讶(Surprise):
+  AU1≥0.4 + AU2≥0.4 + AU5≥0.5 + AU25≥0.3 + AU26≥0.6
+  OAO: onset=30-80ms apex=100-200ms offset=200-400ms curve=expDecay
+
+蔑视(Contempt):
+  AU4≥0.2 + AU12单侧≥0.4(L/R差>0.35) + AU10≥0.1
+  OAO: onset=80-150ms apex=200-600ms offset=150-300ms curve=skewR
+
+紧张(Anxiety):
+  AU1+2=0.3 + AU4=0.3 + AU7=0.4(L略强) + AU20=0.2 + AU23=0.2
+  OAO: onset=100-200ms apex=随场景持续 offset=随缓解 curve=gaussian
+  ANS: PULSE car0.3/tem0.15 SWEAT stage1-2 瞳孔扩大
+
+释然(Relief):
+  AU6=0.15 + AU12=0.2 + AU43=0.3(慢闭眼 L:0.35 R:0.25)
+  OAO: onset=150-300ms apex=300-800ms offset=400-800ms curve=skewL
 ```
 
-### 5.4 生理模型
+### 5.4 生理模型 (v6增强)
 
 眨眼:
 ```
 基线 15-20 bpm (每3-5s一次), 每次100-150ms
+眨眼类型: soft(半眨75%)/complete(完全20%)/double(双连眨3%)/long(长闭>300ms 1%)/flutter(快速扇动1%)
 高arousal(愤怒/恐惧/兴奋): +8-12 bpm → 20-35 bpm
 低arousal(悲伤/疲劳): -5-10 bpm → 8-15 bpm
 高度集中/阅读: -10-15 bpm → 5-10 bpm
+欺骗/认知负荷: +5-8 bpm → 20-28 bpm, 同时减少眨眼幅度(变为更多soft类型)
 ```
 
 瞳孔:
@@ -607,14 +695,17 @@ TRANSITION: [{type}] — {connection_point} | LIGHT Δ: {from_K}K→{to_K}K
 diameter(mm) = 2.0 + arousal × 6.0
 arousal=0.0→2.0mm, 0.25→3.5mm, 0.5→5.0mm, 0.75→6.5mm, 1.0→8.0mm
 明环境-1mm, 暗环境+1.5mm
+瞳孔振荡(Hippus): ±0.15mm @0.3Hz (正常), 高arousal时消失
 ```
 
 呼吸:
 ```
 基线 12-16 cpm, 胸40%:腹60%
 焦虑: 20-30 cpm, 胸70%:腹30% (浅快)
-悲伤: 8-12 cpm, 胸30%:腹70% (深呼吸)
+悲伤: 8-12 cpm, 胸30%:腹70% (深呼吸+叹息)
 惊讶: 屏息0-3s后快速呼气
+恐惧: 不规则浅快+偶尔屏息
+愤怒: 深而有力的呼吸, 呼气延长
 ```
 
 头部姿态:
@@ -628,47 +719,158 @@ arousal=0.0→2.0mm, 0.25→3.5mm, 0.5→5.0mm, 0.75→6.5mm, 1.0→8.0mm
 困惑: pitch+5° yaw±3-5°
 ```
 
-### 5.5 视线状态机
+### 5.5 视线状态机 (v6扩展 — 8状态)
+
 ```
-FOCUS ←→ SCAN (列举/搜寻时)
-FOCUS ←→ EMPHASIS (！/？/引号时)
-FOCUS ←→ AVOID (…/羞愧时)
-RECALL (回忆/思考时上视)
+FOCUS ←→ SCAN (搜寻性眼跳 2-5Hz)
+FOCUS ←→ EMPHASIS (！/？/引号，瞳孔扩大，眼裂微张)
+FOCUS ←→ AVOID (…/回避场景，向下+侧方15-30°)
+FOCUS ←→ RECALL (思考/回忆，上视L或R 20-35°)
+FOCUS ←→ DART (焦虑，高频小幅眼跳4-6Hz，瞳孔扩大)
+FOCUS → VACANT (走神/离解，正中无焦，瞳孔缩小)
+FOCUS → PURSUIT (跟踪移动物体，平滑追随)
 ```
 
-| 状态 | 眼球位置 | 触发 |
-|------|---------|------|
-| FOCUS | 居中 | 默认/逗号后/句号后 |
-| SCAN | L→R 200-400ms | 分号/列举 |
-| EMPHASIS | 居中+微睁大 | ！/？/" |
-| AVOID | down+left/right | …/犹豫/羞愧 |
-| RECALL | up+right/left | 思考/回忆 |
+| 状态 | 眼球位置 | 瞳孔 | 扫视特征 | 触发 |
+|------|---------|------|---------|------|
+| **FOCUS** | 正中 | 正常 | 微眼跳1-2Hz | 默认/对话 |
+| **SCAN** | 水平扫视L↔R | 正常 | 眼跳2-5Hz, 10-30° | 分号/列举/观察 |
+| **EMPHASIS** | 正中 | 扩大0.5-1.5mm | 微眼跳↓ | ！/？/" |
+| **AVOID** | 下+左/右15-30° | 缩小0.3-0.8mm | 减少 | …/羞愧/说谎 |
+| **RECALL** | 左上/右上20-35° | 扩大0.3-0.8mm | 暂停 | 思考/回忆 |
+| **DART** | 小幅快速跳动 | 扩大1-2mm | 4-6Hz, 3-8° | 焦虑/恐惧 |
+| **VACANT** | 正中无焦 | 缩小0.5-1mm | 微眼跳↓ | 走神/离解 |
+| **PURSUIT** | 平滑追踪 | 正常 | 0眼跳 | 追视移动物 |
 
-### 5.6 每镜头FACS注入格式
+### 5.6 微表情泄漏模式 (v6新增)
 
-对话镜头:
+当角色试图压抑某种情绪时，微表情会在特定AU上以<200ms的速度泄漏：
+
+| 压抑的情绪 | 泄漏AU | 典型持续时间 | OAO | 触发场景示例 |
+|-----------|--------|------------|-----|------------|
+| 压抑悲伤 | AU1+AU4 微闪 | 60-100ms | onset=50ms apex=40ms offset=70ms expDecay | 说到伤心事但强颜欢笑 |
+| 压抑愤怒 | AU4+AU7 微闪 | 50-80ms | onset=30ms apex=40ms offset=60ms expDecay | 被冒犯但保持礼貌 |
+| 压抑喜悦 | AU6 微闪 (杜兴泄漏) | 40-80ms | onset=30ms apex=30ms offset=50ms expDecay | 听到好消息但需保持严肃 |
+| 压抑恐惧 | AU5 微闪 (上睑提) | 30-60ms | onset=20ms apex=30ms offset=40ms expDecay | 表面镇定但内心恐慌 |
+| 压抑厌恶 | AU9 微闪 (皱鼻) | 40-70ms | onset=30ms apex=30ms offset=50ms expDecay | 吃难吃食物但礼貌 |
+| 压抑蔑视 | AU12单侧微闪 | 40-80ms | onset=30ms apex=40ms offset=60ms expDecay | 面对讨厌的人但微笑 |
+| 压抑紧张 | AU7+AU23+AU20 | 60-120ms | onset=40ms apex=50ms offset=80ms gaussian | 面试/演讲前的镇定面具 |
+| 压抑惊讶 | AU1+2+5 微闪 | 50-100ms | onset=30ms apex=50ms offset=70ms expDecay | 已知道消息但装惊讶 |
+
+### 5.7 表情共发音 (v6新增)
+
+当连续两个镜头/标点间表情发生变化时，存在过渡融合区：
+
 ```
-FACS: AU1={} AU2={} AU4={} AU5={} AU6={} AU7={} AU9={} AU10={} AU12={} AU14={} AU15={} AU16={} AU17={} AU18={} AU20={} AU22={} AU23={} AU24={} AU25={} AU26={} AU27={} AU43={} AU45={}
-  BLINK: {bpm}bpm | PUPIL: {mm}mm | BREATH: {cpm}cpm chest{chest}%dia{diaph}%
-  HEAD: p{pitch}° y{yaw}° r{roll}° | GAZE: {state}
-  对话驱动: 标点序列="{punctuation_sequence}" → AU激活=[{au_activations}]
+COART规则:
+  重叠区: A的最后30-50% offset 与 B的最初20-40% onset 重叠
+  区域差异: 嘴部AU过渡速度 > 眼部AU过渡速度 (~1.5×)
+  优势规则: 较高arousal的情绪在模糊区域获胜
+  持久性: AU1(眉抬)常跨过渡持续, AU6(颊提)比AU12(嘴角)消退慢
 ```
 
-非对话镜头 (基线):
+关键过渡模式:
 ```
-FACS: AU1=0.05 AU2=0.02 AU4=0.05 AU5=0.0 AU6=0.0 AU7=0.1 AU9=0.0 AU10=0.0 AU12=0.05 AU14=0.0 AU15=0.05 AU16=0.0 AU17=0.0 AU18=0.0 AU20=0.0 AU22=0.0 AU23=0.0 AU24=0.0 AU25=0.0 AU26=0.0 AU27=0.0 AU43=0.0 AU45=0
-  BLINK: 18bpm | PUPIL: 4.0mm | BREATH: 14cpm chest40%dia60%
-  HEAD: p0° y0° r0° | GAZE: FOCUS
+微笑→中性: AU12先消退(~250ms), AU6后消退(~400ms), 眼部温暖残留 (杜兴标记)
+哭泣→微笑: AU15→AU12, AU1+AU4+泪液持续可见, 呼吸从抽泣→平稳 (1-3s)
+恐惧→释然: AU5最快下降(~100ms), 瞳孔缓慢收缩(~2s), 呼吸从浅快→深呼吸
+愤怒→悲伤: AU4强度降, AU23→AU15, 呼吸从急促→缓慢深呼吸 (1-2s)
+惊讶→喜悦: AU5降, AU6升, AU25闭→AU12扬 (300-800ms)
+```
+
+### 5.8 ANS自主神经效应 (v6新增)
+
+高arousal情绪场景必须注入以下ANS参数:
+
+```
+ANS参数:
+  PULSE: 颈动脉可见搏动carotid{0.0-0.5} 颞浅动脉temporal{0.0-0.3}
+    平静0.05-0.1, 紧张0.15-0.25, 恐惧/愤怒0.3-0.45, 极度恐惧0.4-0.5
+  SKIN: 脸红flush[{zones=cheeks/ears/neck: 0.0-1.0}] 脸白blanch[{zones=lips/face: 0.0-1.0}]
+    愤怒=深红(cheeks:0.7,ears:0.5,neck:0.3), 尴尬=粉红(cheeks:0.4,ears:0.6), 恐惧=发白(lips:0.5,face:0.3)
+  SWEAT: 出汗stage{0-5} sheen{0.0-1.0} zones=[forehead/temples/upper_lip/nose/chin]
+    0=干燥, 1=微光泽, 2=明显湿润, 3=汗珠, 4=流淌, 5=如注
+  TEAR: 泪液stage{0-5}
+    0=正常, 1=泪河增厚, 2=眼泛泪光, 3=泪水盈眶, 4=泪珠滑落, 5=泪流满面
+```
+
+### 5.9 表情真伪诊断 (v6新增)
+
+根据OAO时序参数判断表情真伪:
+
+```
+真诚表情指标 (genuineness ≥ 0.75):
+  - onset在120-180ms范围 (不过快)
+  - curve为gaussian (对称钟形)
+  - apex在200-500ms (不过长)
+  - AU6+AU12同时出现 (杜兴标记)
+  - AU12左偏~12% (右脑情绪处理)
+
+虚假表情指标 (genuineness ≤ 0.4):
+  - onset < 100ms (太快) 或 > 300ms (太慢)
+  - curve为linear (机械式)
+  - apex > 600ms (停留过久=故作)
+  - offset < 150ms (突然弹回=开关式)
+  - AU6缺失 (无杜兴标记)
+  - AU12对称 (有意控制)
+
+genuineness计算公式:
+  score = timing_score(onset,apex,offset,curve) × 0.4
+        + duchenne_score(AU6,AU12) × 0.35
+        + asymmetry_score(AU12_L/AU12_R) × 0.15
+        + coart_score(过渡自然度) × 0.10
+```
+
+### 5.10 每镜头v6 FACS注入格式
+
+**对话镜头 (完整v6格式):**
+```
+FACS v6:
+  AU1={L_val/R_val} AU2={L/R} AU4={L/R} AU5={L/R} AU6={L/R} AU7={L/R}
+  AU9={val} AU10={L/R} AU12={L/R} AU14={L/R} AU15={L/R} AU16={val}
+  AU17={val} AU18={val} AU20={L/R} AU22={val} AU23={val} AU24={val}
+  AU25={val} AU26={val} AU27={val} AU43={L/R} AU45={rate}
+  ASYMM_LEVEL: {L0_SYMMETRIC/L1_SUBTLE/L2_MODERATE/L3_STRONG/L4_UNILATERAL}
+  EXPR_TIMING: onset={ms}ms apex={ms}ms offset={ms}ms curve={gaussian/logistic/expDecay/linear/skewR/skewL/doublePeak/stutter}
+  GENUINENESS: {0.0-1.0}
+  COART: {prev_emotion}→{cur_emotion} overlap={ms}ms eye_fade={ms}/{ms} mouth_fade={ms}/{ms}
+  MICRO: macro[{emotion}/I{0.x}] leakage[{emotion}/AUs/timing] suppression{0.x}
+  EYES: GAZE:{state} SACC:{deg}°/{deg/s}°/s MICROSACC:{Hz}Hz HIPPUS:{mm}mm VERGENCE:{deg}° TEAR:{stage}
+  PHYSIO: BLINK:{bpm}bpm type:{soft/complete/double/long/flutter} PUPIL:{mm}mm BREATH:{cpm}cpm ch{ch}%dia{dia}%
+  HEAD: pitch{p}° yaw{y}° roll{r}°
+  ANS: PULSE car{0.x}/tem{0.x} SKIN flush[{zones}] blanch[{zones}] SWEAT stage{0-5} TEAR stage{0-5}
+  对话驱动: punct_seq="{punctuation_sequence}" → AU_activations=[{list}] + leakages=[{micro_list}]
+```
+
+**非对话镜头 (v6基线, 叠加角色静息张力):**
+```
+FACS v6:
+  AU1=0.05(L:0.05/R:0.05) AU2=0.02(L/R) AU4=0.05(L/R) AU5=0.0(L/R) AU6=0.0(L/R) AU7=0.1(L/R)
+  AU9=0.0 AU10=0.0(L/R) AU12=0.05(L/R) AU14=0.0(L/R) AU15=0.05(L/R) AU16=0.0
+  AU17=0.0 AU18=0.0 AU20=0.0(L/R) AU22=0.0 AU23=0.0 AU24=0.0
+  AU25=0.0 AU26=0.0 AU27=0.0 AU43=0.0(L/R) AU45=0
+  ASYMM_LEVEL: L0_SYMMETRIC
+  EXPR_TIMING: onset=0ms apex=0ms offset=0ms curve=linear
+  GENUINENESS: N/A (baseline)
+  COART: none→neutral
+  MICRO: macro[neutral/I0.0] leakage[none] suppression0.0
+  EYES: GAZE:FOCUS SACC:0°/0°/s MICROSACC:2Hz HIPPUS:0.15mm VERGENCE:0° TEAR:0
+  PHYSIO: BLINK:18bpm type:soft PUPIL:4.0mm BREATH:14cpm ch40%dia60%
+  HEAD: pitch0° yaw0° roll0°
+  ANS: PULSE car0.05/tem0.0 SKIN flush[] sweat0 tear0
 ```
 
 ### [CHECKPOINT_5]
 ```
 ═══ [CHECKPOINT_5] ═══
-步骤: Step 5/6 — 表情注入
+步骤: Step 5/6 — 表情注入 v6
 状态: ✅ 完成
 产出:
-  - [N]个镜头完整FACS向量 (对话镜头含标点驱动AU)
-  - [N]个镜头生理模型 (blink/pupil/breath/head/gaze)
+  - [N]个镜头完整v6 FACS向量 (含不对称AU + OAO时序)
+  - [N]个镜头泄漏检测 (有压抑情绪场景)
+  - [N]个镜头共发音过渡 (相邻表情变化场景)
+  - [N]个镜头ANS自主神经效应 (高arousal场景)
+  - [N]个镜头生理模型 (blink/pupil/breath/head/gaze v6)
 下一步: Step 6/6 — 交叉审计 + 质检
 用户指令: 说 "继续" / "修改镜头X表情" / "暂停" / "退出"
 ═══════════════════════
@@ -696,6 +898,9 @@ FACS: AU1=0.05 AU2=0.02 AU4=0.05 AU5=0.0 AU6=0.0 AU7=0.1 AU9=0.0 AU10=0.0 AU12=0
 | 1.8 | 焦距≥135mm 且 prompt含 "deep space/exaggerated" | prompt→"compressed/flattened" |
 | 1.9 | clothing=silk 且 particle=rain 无湿身描述 | 添加湿身效果 |
 | 1.10 | 场景时间≠Kelvin推导值 (偏差>500K) | Kelvin→时间推导值 |
+| 1.11 | FACS不对称性与情绪声明矛盾: "蔑视"但AU12对称, 或"惊讶"但AU1单侧强>0.3 | 调整AU不对称至情绪默认值 |
+| 1.12 | GENUINENESS评分与OAO时序矛盾: genuineness>0.8但onset<80ms或curve=linear | 调整OAO至真诚模式, 或降低genuineness |
+| 1.13 | 泄漏声明存在但无micro表达式数据: suppression<0.8但leakage为空 | 根据情绪抑制特征补充泄漏AU |
 
 #### Audit 2: 维度完整性 (Dimension Coverage)
 
@@ -728,6 +933,14 @@ FACS: AU1=0.05 AU2=0.02 AU4=0.05 AU5=0.0 AU6=0.0 AU7=0.1 AU9=0.0 AU10=0.0 AU12=0
 | 3.10 | 最近对焦 | 85mm ≥85cm, 50mm ≥50cm |
 | 3.11 | height vs 景别 | ECU/CU eye level, WS chest level |
 | 3.12 | weightFeel > 0 | 所有物体 |
+| 3.13 | FACS AU值 | 0.0-1.0, 不对称L/R差≤0.65 (任何AU) |
+| 3.14 | OAO onset | 30-500ms (微表情30-100ms, 宏表情100-500ms) |
+| 3.15 | OAO apex | 0-2000ms (0=闪烁, >2000=冻结) |
+| 3.16 | OAO offset | 50-800ms |
+| 3.17 | ANS 颈动脉搏动 | 0.02-0.5 |
+| 3.18 | ANS 出汗stage | 0-5, sheen 0.0-1.0 |
+| 3.19 | TEAR stage | 0-5 |
+| 3.20 | SACC amplitude vs velocity | velocity ≈ 20×√amplitude + 80 (非线性关系) |
 
 #### Audit 4: 引用完整性 (Reference Integrity)
 
@@ -768,14 +981,17 @@ ANY still FAIL after 3 retries → shot.audit = "❌ [{audit_name}]" → 报告�
 ### 6b: 一致性质检
 
 - [ ] 角色恒定特征跨镜头不变
+- [ ] 角色表情指纹跨镜头一致 (静息张力/expressivity/不对称偏侧/眨眼风格)
 - [ ] 场景恒定元素跨镜头一致
 - [ ] 光线渐变合理 (同场景≤3°/镜)
 - [ ] 时间流逝合理
-- [ ] 相邻镜头有明确过渡设计
+- [ ] 相邻镜头有明确过渡设计 (含表情共发音COART)
 - [ ] 角色状态从上一镜stateAfter承接
 - [ ] 称谓统一 (CHAR_ID/SCENE_ID)
 - [ ] 每镜头10维完整
-- [ ] 对话镜头有FACS向量
+- [ ] 对话镜头有v6 FACS向量 (含不对称+OAO时序)
+- [ ] 高arousal场景有ANS效应注入
+- [ ] 情绪压抑场景有微表情泄漏数据
 - [ ] 审计标记完整
 
 ### 审计报告模板
@@ -797,7 +1013,7 @@ Audit 5 可合成性:   ✅ PASS / ❌ FAIL [{items}]
 状态: ✅ 完成
 产出:
   - [N]个镜头审计报告
-  - 全序列一致性质检报告
+  - 全序列一致性质检报告 (含v6表情一致性)
   - [P]个镜头✅通过 / [F]个镜头❌失败
 最终: ✅ 全部通过 → 等待用户说 "结束创作" 正式退出
       ❌ 有失败镜头 → 等待用户说 "修复 [镜头X]" 或 "结束创作"
@@ -818,7 +1034,9 @@ Audit 5 可合成性:   ✅ PASS / ❌ FAIL [{items}]
 "修改 [角色X/场景Y/镜头Z]"  → 返回修正
 "生成镜头 N-M"              → 指定镜头范围
 "极致模式" / "10维度输出"   → 确保全维度填充 (默认已启用)
+"v6表情模式" / "不对称输出" → 确保v6 FACS全参数 (不对称+OAO+泄漏+ANS)
 "只做审计"                  → 跳过生成，仅执行 Step 6
+"表情真伪分析 SHOT_X"       → 对单个镜头做genuineness分析
 "结束创作" / "退出"         → 结束 Skill 模式
 ```
 

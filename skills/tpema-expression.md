@@ -1,6 +1,8 @@
-# 📚 参考手册: TPEMA 文本驱动表情微动画引擎
+# 📚 参考手册: TPEMA 文本驱动表情微动画引擎 v6
 
-> **本文件是参考手册。** ai-video-studio.md v5 已内联全部标点→AU映射表、25+AU参照表、情绪混合公式、生理模型和视线状态机，AI 运行时无需加载此文件。此文件保留供深度查询、JSON/CSV/XML格式导出和独立研究使用。
+> **本文件是参考手册。** ai-video-studio.md v6 已内联全部标点→AU映射表(含不对称)、25+AU参照表(含L/R标记)、情绪混合公式(含OAO时序+真伪诊断)、生理模型(含v6增强)、扩展视线状态机(8状态)、微表情泄漏模式、共发音规则、ANS效应和角色表情指纹。AI 运行时无需加载此文件。此文件保留供深度查询、JSON/CSV/XML格式导出、独立研究和完整v6参数空间查阅使用。
+
+> **🆕 v6新增参考手册**: `micro-expression-engine.md` — 7大模块完整参数表、诊断性时序模式、抑制-泄漏完整映射、扩展眼动系统、ANS进展模型、角色原型预设。
 
 ---
 
@@ -207,18 +209,29 @@ AU激活值 = 总强度 × AU基础值 + Perlin噪声(种子, 时间) × 噪声�
 
 ## 输出格式
 
-### 格式 A: Prompt-FACS Vector (注入视频提示词)
+### 格式 A: Prompt-FACS Vector v6 (注入视频提示词)
 
 **这是注入 micro-detail-injection.md Dimension 4 的标准格式。每镜头必输出。**
 
 ```
-FACS: AU1={n} AU2={n} AU4={n} AU5={n} AU6={n} AU7={n} AU9={n} AU10={n} AU12={n} AU14={n} AU15={n} AU16={n} AU17={n} AU18={n} AU20={n} AU22={n} AU23={n} AU24={n} AU25={n} AU26={n} AU27={n} AU43={n} AU45={n}
-  BLINK: {n}bpm | PUPIL: {n}mm arousal{0.x} | BREATH: {n}cpm chest{n}%dia{n}%
-  HEAD: pitch{n}° yaw{n}° roll{n}° | GAZE: {FOCUS/SCAN/AVOID/EMPHASIS/RECALL}
-  VISEME: [{time_ms}:{phoneme}:{AU25}:{AU26}:{AU27}]...
+FACS v6:
+  AU1={L_val/R_val} AU2={L/R} AU4={L/R} AU5={L/R} AU6={L/R} AU7={L/R}
+  AU9={val} AU10={L/R} AU12={L/R} AU14={L/R} AU15={L/R} AU16={val}
+  AU17={val} AU18={val} AU20={L/R} AU22={val} AU23={val} AU24={val}
+  AU25={val} AU26={val} AU27={val} AU43={L/R} AU45={rate}
+  ASYMM_LEVEL: {L0_L4}
+  EXPR_TIMING: onset={ms}ms apex={ms}ms offset={ms}ms curve={type}
+  GENUINENESS: {0.0-1.0}
+  COART: {prev}→{cur} overlap={ms}ms eye_fade={ms}/{ms} mouth_fade={ms}/{ms}
+  MICRO: macro[{emotion}/I{0.x}] leakage[{emotion}/AUs/timing] suppression{0.x}
+  EYES: GAZE:{state} SACC:{deg}°/{°/s}°/s MICROSACC:{Hz}Hz HIPPUS:{mm}mm VERGENCE:{deg}° TEAR:{stage}
+  PHYSIO: BLINK:{bpm}bpm type:{type} PUPIL:{mm}mm BREATH:{cpm}cpm ch{ch}%dia{diaph}%
+  HEAD: pitch{p}° yaw{y}° roll{r}°
+  ANS: PULSE car{0.x}/tem{0.x} SKIN flush[{zones}] blanch[{zones}] SWEAT stage{0-5} TEAR stage{0-5}
+  对话驱动: punct_seq="{seq}" → AU_activations=[{list}] + leakages=[{micro_list}]
 ```
 
-### 格式 B: JSON (完整控制数据)
+### 格式 B: JSON v6 (完整控制数据)
 ```json
 {
   "tracks": [
@@ -226,11 +239,27 @@ FACS: AU1={n} AU2={n} AU4={n} AU5={n} AU6={n} AU7={n} AU9={n} AU10={n} AU12={n} 
       "timestamp": 0,
       "duration": 200,
       "trigger": "，",
-      "au": { "AU1": 0.3, "AU2": 0.3, "AU4": 0.0, "AU5": 0.0, "AU6": 0.0, "AU7": 0.1, "AU9": 0.0, "AU10": 0.0, "AU12": 0.05, "AU14": 0.0, "AU15": 0.05, "AU16": 0.0, "AU17": 0.0, "AU18": 0.0, "AU20": 0.0, "AU22": 0.0, "AU23": 0.0, "AU24": 0.0, "AU25": 0.0, "AU26": 0.0, "AU27": 0.0, "AU43": 0.0, "AU45": 0 },
+      "au": {
+        "AU1": {"L": 0.32, "R": 0.28}, "AU2": {"L": 0.30, "R": 0.30},
+        "AU4": {"L": 0.0, "R": 0.0}, "AU5": {"L": 0.0, "R": 0.0},
+        "AU6": {"L": 0.0, "R": 0.0}, "AU7": {"L": 0.1, "R": 0.1},
+        "AU9": 0.0, "AU10": {"L": 0.0, "R": 0.0},
+        "AU12": {"L": 0.06, "R": 0.05}, "AU14": {"L": 0.0, "R": 0.0},
+        "AU15": {"L": 0.05, "R": 0.05}, "AU16": 0.0, "AU17": 0.0, "AU18": 0.0,
+        "AU20": {"L": 0.0, "R": 0.0}, "AU22": 0.0, "AU23": 0.0, "AU24": 0.0,
+        "AU25": 0.0, "AU26": 0.0, "AU27": 0.0,
+        "AU43": {"L": 0.0, "R": 0.0}, "AU45": 0
+      },
+      "asymmLevel": "L1_SUBTLE",
+      "timing": { "onset_ms": 150, "apex_ms": 100, "offset_ms": 200, "curve": "gaussian" },
+      "genuineness": 0.88,
+      "coarticulation": { "from": null, "to": null, "overlap_ms": 0 },
+      "micro": { "macro": {"emotion": "neutral", "intensity": 0.0}, "leakages": [], "suppression": 0.0 },
+      "eyes": { "gaze": "FOCUS", "saccade_deg": 0, "saccade_vel": 0, "microsacc_hz": 2, "hippus_mm": 0.15, "vergence_deg": 0, "tear_stage": 0 },
       "headPose": { "pitch": 2, "yaw": 0, "roll": 0 },
-      "gaze": "FOCUS",
       "voice": { "speed": 1.0, "volume": 0, "tone": "flat" },
-      "physiology": { "blink": 18, "pupil_mm": 4.2, "breath_cpm": 14, "chest_ratio": 40, "diaph_ratio": 60 },
+      "physiology": { "blink_bpm": 18, "blink_type": "soft", "pupil_mm": 4.2, "breath_cpm": 14, "chest_ratio": 40, "diaph_ratio": 60 },
+      "ans": { "pulse_carotid": 0.05, "pulse_temporal": 0.0, "skin_flush": {}, "skin_blanch": {}, "sweat_stage": 0, "tear_stage": 0 },
       "easing": "linear"
     }
   ],
@@ -239,21 +268,30 @@ FACS: AU1={n} AU2={n} AU4={n} AU5={n} AU6={n} AU7={n} AU9={n} AU10={n} AU12={n} 
 }
 ```
 
-### 格式 C: CSV (Excel/Blender 导入)
+### 格式 C: CSV v6 (Excel/Blender 导入)
 ```csv
-timestamp,duration,trigger,AU1,AU2,AU4,AU5,AU6,AU7,AU9,AU10,AU12,AU14,AU15,AU16,AU17,AU18,AU20,AU22,AU23,AU24,AU25,AU26,AU27,AU43,AU45,headPitch,headYaw,gaze,blink,pupil_mm,breath_cpm,chest_ratio,diaph_ratio,easing
-0,200,，,0.3,0.3,0,0,0,0.1,0,0,0.05,0,0.05,0,0,0,0,0,0,0,0,0,0,0,0,2,0,FOCUS,18,4.2,14,40,60,linear
+timestamp,duration,trigger,AU1_L,AU1_R,AU2_L,AU2_R,AU4_L,AU4_R,AU5_L,AU5_R,AU6_L,AU6_R,AU7_L,AU7_R,AU9,AU10_L,AU10_R,AU12_L,AU12_R,AU14_L,AU14_R,AU15_L,AU15_R,AU16,AU17,AU18,AU20_L,AU20_R,AU22,AU23,AU24,AU25,AU26,AU27,AU43_L,AU43_R,AU45,asymm_level,onset_ms,apex_ms,offset_ms,curve,genuineness,gaze,sacc_deg,sacc_vel,microsacc_hz,hippus_mm,vergence_deg,headPitch,headYaw,blink_bpm,blink_type,pupil_mm,breath_cpm,chest_ratio,diaph_ratio,pulse_carotid,pulse_temporal,sweat_stage,tear_stage,easing
+0,200,，,0.32,0.28,0.30,0.30,0,0,0,0,0,0,0.1,0.1,0,0,0,0.06,0.05,0,0,0.05,0.05,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,L1_SUBTLE,150,100,200,gaussian,0.88,FOCUS,0,0,2,0.15,0,2,0,18,soft,4.2,14,40,60,0.05,0,0,0,linear
 ```
 
-### 格式 D: FACS-XML (专业动画工具)
+### 格式 D: FACS-XML v6 (专业动画工具)
 ```xml
-<facs timeline="30fps" duration="5000">
+<facs timeline="30fps" duration="5000" version="6">
   <keyframe time="0" duration="200">
-    <au code="1" value="0.3"/>
-    <au code="2" value="0.3"/>
+    <au code="1" L="0.32" R="0.28"/>
+    <au code="2" L="0.30" R="0.30"/>
+    <au code="4" L="0.0" R="0.0"/>
+    <au code="12" L="0.06" R="0.05"/>
+    <!-- all 23 AUs with L/R where applicable -->
+    <asymmetry level="L1_SUBTLE"/>
+    <timing onset="150" apex="100" offset="200" curve="gaussian"/>
+    <genuineness value="0.88"/>
+    <coarticulation from="" to="" overlap="0"/>
+    <micro macroEmotion="neutral" macroIntensity="0.0" suppression="0.0"/>
+    <eyes gaze="FOCUS" saccadeDeg="0" saccadeVel="0" microsaccHz="2" hippusMm="0.15" vergenceDeg="0" tearStage="0"/>
     <head pitch="2" yaw="0" roll="0"/>
-    <gaze state="FOCUS"/>
-    <physiology blink="18" pupil="4.2" breath="14" chest="40" diaph="60"/>
+    <physiology blinkBpm="18" blinkType="soft" pupilMm="4.2" breathCpm="14" chestRatio="40" diaphRatio="60"/>
+    <ans pulseCarotid="0.05" pulseTemporal="0.0" sweatStage="0" tearStage="0"/>
     <voice speed="1.0" volume="0" tone="flat"/>
     <easing curve="linear"/>
   </keyframe>
@@ -286,4 +324,7 @@ timestamp,duration,trigger,AU1,AU2,AU4,AU5,AU6,AU7,AU9,AU10,AU12,AU14,AU15,AU16,
 
 ## 快速命令
 
-"生成FACS向量" | "分析这段对话的表情" | "导出viseme序列" | "注入生理模型" | "输出Prompt-FACS格式"
+"生成FACS v6向量" | "分析这段对话的表情" | "导出viseme序列" | "注入生理模型+v6"
+"输出Prompt-FACS v6格式" | "不对称表情输出" | "OAO时序分析" | "微表情泄漏检测"
+"真伪表情鉴别 SHOT_X" | "角色表情指纹查询 CHAR_X" | "ANS效应注入"
+"导出JSON v6" | "导出CSV v6" | "导出XML v6" | "共发音过渡分析"
